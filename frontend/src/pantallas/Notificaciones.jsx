@@ -11,7 +11,7 @@ export default function Notificaciones({ onCambio }) {
   const post = (ruta) => () => api(ruta, { method: 'POST' })
 
   return (
-    <section>
+    <section className="seccion-angosta">
       <div className="encabezado">
         <h2>Notificaciones</h2>
         <button className="secundario" onClick={() => ejecutar(post('/notificaciones/leer-todas'))}>

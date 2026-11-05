@@ -44,8 +44,12 @@ export async function api(ruta, { method = 'GET', body } = {}) {
   return datos
 }
 
-export const fecha = (iso) =>
-  iso ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—'
+// Todas las fechas se muestran en hora de Colombia, igual que los mensajes del servidor: «05/11/26 12:58»
+const FORMATO = new Intl.DateTimeFormat('es-CO', {
+  timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: '2-digit',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+export const fecha = (iso) => (iso ? FORMATO.format(new Date(iso)).replace(',', '') : '—')
 
 export function restante(iso) {
   const ms = new Date(iso) - Date.now()

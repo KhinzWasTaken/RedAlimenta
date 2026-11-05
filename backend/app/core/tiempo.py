@@ -19,4 +19,4 @@ def iso(dt: datetime | None) -> str | None:
 
 
 def hora_bogota(dt: datetime) -> str:
-    return dt.replace(tzinfo=UTC).astimezone(BOGOTA).strftime("%d/%m %H:%M")
+    return dt.replace(tzinfo=UTC).astimezone(BOGOTA).strftime("%d/%m/%y %H:%M")

@@ -3,11 +3,9 @@ import { api, fecha, restante } from '../api'
 import { Aviso, Estado, useAccion, useDatos, useEscritorio } from '../componentes/Comunes'
 import Mapa from '../componentes/Mapa'
 
-const enDias = (dias) => {
-  const d = new Date(Date.now() + dias * 864e5)
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
-  return d.toISOString().slice(0, 16)
-}
+// Las fechas se capturan y muestran en hora de Colombia (UTC-5), sin importar la zona del navegador
+const enDias = (dias) => new Date(Date.now() + dias * 864e5 - 5 * 36e5).toISOString().slice(0, 16)
+const aIsoBogota = (local) => new Date(`${local}:00-05:00`).toISOString()
 
 const VACIO = {
   nombre_alimento: '',
@@ -31,7 +29,7 @@ export function Publicar({ onPublicada }) {
     e.preventDefault()
     if (!punto) return setMensaje({ tipo: 'error', texto: 'Marca en el mapa el punto de recogida.' })
     if (!(Number(f.cantidad) > 0)) return setMensaje({ tipo: 'error', texto: 'La cantidad debe ser mayor que cero.' })
-    if (new Date(f.fecha_vencimiento) <= new Date())
+    if (new Date(aIsoBogota(f.fecha_vencimiento)) <= new Date())
       return setMensaje({ tipo: 'error', texto: 'La fecha de vencimiento debe ser futura.' })
     const r = await ejecutar(() =>
       api('/donaciones', {
@@ -41,7 +39,7 @@ export function Publicar({ onPublicada }) {
           id_categoria: Number(f.id_categoria),
           cantidad: Number(f.cantidad),
           unidad_medida: f.unidad_medida,
-          fecha_vencimiento: new Date(f.fecha_vencimiento).toISOString(),
+          fecha_vencimiento: aIsoBogota(f.fecha_vencimiento),
           condiciones_recogida: f.condiciones_recogida || null,
           ubicacion: { ...punto, direccion_referencia: f.direccion_referencia || null, ciudad: 'Bogotá' },
         },
@@ -60,7 +58,7 @@ export function Publicar({ onPublicada }) {
       <div className="publicar">
       <div className="publicar-mapa">
       <p className="tenue">Toca el mapa para marcar dónde se recoge.</p>
-      <Mapa punto={punto} onClic={setPunto} alto={escritorio ? 'calc(100vh - 260px)' : 260} />
+      <Mapa punto={punto} onClic={setPunto} etiquetaPunto="Punto de recogida" encuadrar={false} alto={escritorio ? 'calc(100vh - 260px)' : 260} />
       {punto && (
         <p className="tenue pequeno">
           Punto: {punto.lat}, {punto.lon}
@@ -99,7 +97,7 @@ export function Publicar({ onPublicada }) {
           </label>
         </div>
         <label>
-          Vence
+          Vence (hora de Colombia)
           <input type="datetime-local" value={f.fecha_vencimiento} onChange={cambiar('fecha_vencimiento')} required />
         </label>
         <label>

@@ -77,9 +77,9 @@ export function Buscar({ onReservada }) {
   }
 
   const lista = resultado?.resultados ?? []
-  const centro = resultado ? [resultado.punto.lat, resultado.punto.lon] : null
   const marcadores = lista.map((d) => ({
     id: d.id_donacion,
+    etiqueta: `${d.nombre_alimento} · ${d.distancia_km.toFixed(1)} km`,
     lat: d.ubicacion.lat,
     lon: d.ubicacion.lon,
     color: colorPuntaje(d.prioridad.puntaje),
@@ -154,7 +154,7 @@ export function Buscar({ onReservada }) {
         <Mapa
           marcadores={marcadores}
           punto={resultado?.punto || punto}
-          centro={centro}
+          etiquetaPunto={referencia === 'mapa' ? 'Punto de búsqueda' : 'Mi necesidad'}
           onClic={referencia === 'mapa' ? setPunto : undefined}
           alto={escritorio ? 'calc(100vh - 290px)' : 380}
         />
