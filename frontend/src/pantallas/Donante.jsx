@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api, fecha, restante } from '../api'
-import { Aviso, Estado, useAccion, useDatos } from '../componentes/Comunes'
+import { Aviso, Estado, useAccion, useDatos, useEscritorio } from '../componentes/Comunes'
 import Mapa from '../componentes/Mapa'
 
 const enDias = (dias) => {
@@ -23,6 +23,7 @@ export function Publicar({ onPublicada }) {
   const categorias = useDatos('/categorias')
   const [f, setF] = useState(VACIO)
   const [punto, setPunto] = useState(null)
+  const escritorio = useEscritorio()
   const { ocupado, mensaje, setMensaje, ejecutar } = useAccion()
   const cambiar = (campo) => (e) => setF({ ...f, [campo]: e.target.value })
 
@@ -56,13 +57,16 @@ export function Publicar({ onPublicada }) {
   return (
     <section>
       <h2>Publicar donación</h2>
+      <div className="publicar">
+      <div className="publicar-mapa">
       <p className="tenue">Toca el mapa para marcar dónde se recoge.</p>
-      <Mapa punto={punto} onClic={setPunto} alto={260} />
+      <Mapa punto={punto} onClic={setPunto} alto={escritorio ? 'calc(100vh - 260px)' : 260} />
       {punto && (
         <p className="tenue pequeno">
           Punto: {punto.lat}, {punto.lon}
         </p>
       )}
+      </div>
       <form className="formulario" onSubmit={publicar}>
         <label>
           Alimento
@@ -113,6 +117,7 @@ export function Publicar({ onPublicada }) {
           {ocupado ? 'Publicando…' : 'Publicar donación'}
         </button>
       </form>
+      </div>
     </section>
   )
 }
@@ -141,6 +146,7 @@ export function MisDonaciones() {
       <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
       <Aviso mensaje={donaciones.error} />
       {donaciones.datos?.length === 0 && <p className="tenue">Aún no has publicado donaciones.</p>}
+      <div className="rejilla">
       {donaciones.datos?.map((d) => {
         const r = activa(d.id_donacion)
         return (
@@ -193,6 +199,7 @@ export function MisDonaciones() {
           </article>
         )
       })}
+      </div>
     </section>
   )
 }

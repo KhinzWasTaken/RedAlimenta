@@ -37,6 +37,7 @@ export default function Entregas() {
       {reservas.datos && conEntrega.length === 0 && (
         <p className="tenue">No hay entregas todavía. Aparecen cuando el donante confirma una reserva.</p>
       )}
+      <div className="rejilla">
       {conEntrega.map((r) => {
         const e = r.entrega
         const de = (rol) => e.confirmaciones.find((c) =>
@@ -80,6 +81,7 @@ export default function Entregas() {
           </article>
         )
       })}
+      </div>
     </section>
   )
 }

@@ -28,6 +28,7 @@ export function Cuentas() {
       </div>
       <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
       <Aviso mensaje={usuarios.error} />
+      <div className="rejilla">
       {usuarios.datos?.map((u) => (
         <article key={u.id_usuario} className="tarjeta">
           <div className="encabezado">
@@ -58,6 +59,7 @@ export function Cuentas() {
           )}
         </article>
       ))}
+      </div>
     </section>
   )
 }

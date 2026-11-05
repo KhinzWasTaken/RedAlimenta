@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, fecha, restante } from '../api'
-import { Aviso, Estado, useAccion, useDatos } from '../componentes/Comunes'
+import { Aviso, Estado, useAccion, useDatos, useEscritorio } from '../componentes/Comunes'
 import Mapa from '../componentes/Mapa'
 
 const URGENCIAS = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA']
@@ -26,6 +26,7 @@ export function Buscar({ onReservada }) {
   const [categoria, setCategoria] = useState('')
   const [orden, setOrden] = useState('prioridad')
   const [vista, setVista] = useState('mapa')
+  const escritorio = useEscritorio()
   const [resultado, setResultado] = useState(null)
   const [error, setError] = useState('')
 
@@ -134,6 +135,7 @@ export function Buscar({ onReservada }) {
         </div>
       </div>
 
+      {!escritorio && (
       <div className="segmentado" role="tablist">
         {['mapa', 'lista'].map((v) => (
           <button key={v} className={vista === v ? 'activa' : ''} onClick={() => setVista(v)}>
@@ -141,23 +143,26 @@ export function Buscar({ onReservada }) {
           </button>
         ))}
       </div>
+      )}
 
       <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
       <Aviso mensaje={error} />
       {referencia === 'mapa' && !punto && <Aviso tipo="info" mensaje="Toca el mapa para elegir el punto de búsqueda." />}
 
-      {vista === 'mapa' && (
+      <div className={escritorio ? 'mapa-y-lista' : ''}>
+      {(escritorio || vista === 'mapa') && (
         <Mapa
           marcadores={marcadores}
           punto={resultado?.punto || punto}
           centro={centro}
           onClic={referencia === 'mapa' ? setPunto : undefined}
-          alto={380}
+          alto={escritorio ? 'calc(100vh - 290px)' : 380}
         />
       )}
 
-      {vista === 'lista' && (
+      {(escritorio || vista === 'lista') && (
         <ol className="lista-resultados">
+          {escritorio && <p className="tenue pequeno">{lista.length} resultados · {orden === 'prioridad' ? 'mayor prioridad primero' : 'más cercanas primero'}</p>}
           {lista.length === 0 && <p className="tenue">No hay donaciones disponibles con esos filtros.</p>}
           {lista.map((d) => (
             <li key={d.id_donacion} className="tarjeta">
@@ -179,6 +184,7 @@ export function Buscar({ onReservada }) {
           ))}
         </ol>
       )}
+      </div>
     </section>
   )
 }
@@ -199,6 +205,7 @@ export function MisReservas() {
       <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
       <Aviso mensaje={reservas.error} />
       {reservas.datos?.length === 0 && <p className="tenue">Aún no tienes reservas.</p>}
+      <div className="rejilla">
       {reservas.datos?.map((r) => (
         <article key={r.id_reserva} className="tarjeta">
           <div className="encabezado">
@@ -236,6 +243,7 @@ export function MisReservas() {
           )}
         </article>
       ))}
+      </div>
     </section>
   )
 }

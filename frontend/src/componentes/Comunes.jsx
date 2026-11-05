@@ -61,3 +61,15 @@ export function useAccion(despues) {
   }
   return { ocupado, mensaje, setMensaje, ejecutar }
 }
+
+// true en pantallas anchas (escritorio); se actualiza al cambiar el tamaño de la ventana.
+export function useEscritorio(consulta = '(min-width: 1024px)') {
+  const [coincide, setCoincide] = useState(() => window.matchMedia(consulta).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(consulta)
+    const cambio = () => setCoincide(mq.matches)
+    mq.addEventListener('change', cambio)
+    return () => mq.removeEventListener('change', cambio)
+  }, [consulta])
+  return coincide
+}
