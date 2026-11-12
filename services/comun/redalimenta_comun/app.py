@@ -15,6 +15,7 @@ logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s [%(name)s] [%(correlacion)s] %(message)s")
 for _manejador in logging.getLogger().handlers:
     _manejador.addFilter(FiltroCorrelacion())
+logging.getLogger("pika").setLevel(logging.WARNING)  # sus mensajes de conexión son ruido en los registros
 
 
 def dependencia_sesion(sesiones: Callable[[], sessionmaker]):

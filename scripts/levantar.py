@@ -48,7 +48,7 @@ def main(argv: list[str]) -> int:
     if shutil.which("docker") and "--sin-docker" not in argv:
         print("» Levantando PostgreSQL y RabbitMQ…")
         subprocess.run(["docker", "compose", "-f", str(RAIZ / "infra" / "docker-compose.yml"), "--env-file",
-                        str(RAIZ / "infra" / ".env"), "up", "-d", "--wait"], check=True)
+                        str(RAIZ / "infra" / ".env"), "up", "-d", "--wait", "postgres", "rabbitmq"], check=True)
     bd(["reiniciar"] if "--reiniciar" in argv else ["migrar"])
     if "--reiniciar" not in argv:
         bd(["sembrar"])

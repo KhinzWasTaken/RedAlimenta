@@ -1,7 +1,32 @@
-# Sprint 4 · Base transaccional: un servidor PostgreSQL con PostGIS y cuatro bases separadas,
-# una por servicio (identity, catalog-geo, fulfillment, notification).
-# Uso:  docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+# RedAlimenta con Docker Compose.
+#
+#   Infraestructura para desarrollo (la usa scripts/levantar.py):
+#     docker compose -f infra/docker-compose.yml --env-file infra/.env up -d postgres rabbitmq
+#
+#   Sistema completo (S6-02): bases, broker, migraciones, cinco servicios y gateway con el frontend:
+#     docker compose -f infra/docker-compose.yml --env-file infra/.env --profile app up -d --build
+#   → http://localhost:8080 (única entrada pública; los servicios no publican puertos)
 name: redalimenta
+
+x-servicio: &servicio
+  profiles: ["app"]
+  restart: unless-stopped
+  depends_on:
+    herramientas: {condition: service_completed_successfully}
+    rabbitmq: {condition: service_healthy}
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/salud', timeout=2)"]
+    interval: 10s
+    timeout: 3s
+    retries: 12
+    start_period: 10s
+
+x-comunes: &comunes
+  JWT_SECRETO: ${JWT_SECRETO:?Define JWT_SECRETO en infra/.env}
+  TOKEN_INTERNO: ${TOKEN_INTERNO:?Define TOKEN_INTERNO en infra/.env}
+  RABBITMQ_URL: amqp://${RABBITMQ_USER:-redalimenta}:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+  MODO_DEMO: ${MODO_DEMO:-1}
+  LOG_LEVEL: INFO
 
 services:
   postgres:
@@ -12,7 +37,7 @@ services:
       # Contraseña de los roles de aplicación (uno por base); solo para desarrollo local
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Define APP_DB_PASSWORD en infra/.env}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"  # solo para herramientas en esta máquina
     volumes:
       - datos-postgres:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -22,15 +47,15 @@ services:
       timeout: 3s
       retries: 20
 
-  # Sprint 5 · Broker de eventos (exchange topic redalimenta.eventos). Consola: http://localhost:15672
+  # Broker de eventos (exchange topic redalimenta.eventos). Consola: http://localhost:15672
   rabbitmq:
     image: rabbitmq:3.13-management
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-redalimenta}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en infra/.env}
     ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_CONSOLA_PORT:-15672}:15672"
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_CONSOLA_PORT:-15672}:15672"
     volumes:
       - datos-rabbitmq:/var/lib/rabbitmq
     healthcheck:
@@ -38,6 +63,78 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  # Migraciones de las cinco bases y datos semilla (si están vacías); termina y deja paso a los servicios
+  herramientas:
+    profiles: ["app"]
+    build: {context: .., dockerfile: infra/herramientas/Dockerfile}
+    image: redalimenta/herramientas:local
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      PGHOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      MODO: ${MODO_HERRAMIENTAS:-migrar-y-sembrar}
+
+  identity:
+    <<: *servicio
+    build: {context: ../services, dockerfile: identity-service/Dockerfile}
+    image: redalimenta/identity:local
+    environment:
+      <<: *comunes
+      DATABASE_URL: postgresql+psycopg://identity_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_identity
+
+  catalog:
+    <<: *servicio
+    build: {context: ../services, dockerfile: catalog-geo-service/Dockerfile}
+    image: redalimenta/catalog:local
+    environment:
+      <<: *comunes
+      DATABASE_URL: postgresql+psycopg://catalog_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_catalog
+
+  fulfillment:
+    <<: *servicio
+    build: {context: ../services, dockerfile: fulfillment-service/Dockerfile}
+    image: redalimenta/fulfillment:local
+    environment:
+      <<: *comunes
+      DATABASE_URL: postgresql+psycopg://fulfillment_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_fulfillment
+      CATALOG_URL: http://catalog:8000
+      TAREAS_SEGUNDOS: "60"  # una sola réplica en Compose; en Kubernetes las tareas son un CronJob
+
+  notification:
+    <<: *servicio
+    build: {context: ../services, dockerfile: notification-service/Dockerfile}
+    image: redalimenta/notification:local
+    environment:
+      <<: *comunes
+      DATABASE_URL: postgresql+psycopg://notification_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_notification
+
+  analytics:
+    <<: *servicio
+    build: {context: ../services, dockerfile: analytics-service/Dockerfile}
+    image: redalimenta/analytics:local
+    environment:
+      <<: *comunes
+      DATABASE_URL: postgresql+psycopg://analytics_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_analytics
+
+  # Gateway (S6-03): frontend compilado + reparto de /api; única dirección pública
+  gateway:
+    profiles: ["app"]
+    build: {context: .., dockerfile: frontend/Dockerfile}
+    image: redalimenta/gateway:local
+    restart: unless-stopped
+    depends_on:
+      identity: {condition: service_healthy}
+      catalog: {condition: service_healthy}
+      fulfillment: {condition: service_healthy}
+      notification: {condition: service_healthy}
+      analytics: {condition: service_healthy}
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
 
 volumes:
   datos-postgres:

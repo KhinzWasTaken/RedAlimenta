@@ -181,6 +181,7 @@ class Consumidor(threading.Thread):
                         correlacion.fijar(evento.id_correlacion)
                         self.manejador(evento)
                         canal.basic_ack(metodo.delivery_tag)
+                        log.info("%s procesado en %s (%s)", evento.tipo, self.cola, evento.id_evento)
                     except Exception:
                         log.exception("Fallo procesando un evento de %s; se reintentará", self.cola)
                         canal.basic_nack(metodo.delivery_tag, requeue=True)
