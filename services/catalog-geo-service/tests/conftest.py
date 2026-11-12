@@ -6,6 +6,13 @@ las migraciones, y la borra al final. Ejemplo:
 """
 import os
 import uuid
+
+# API en modo prueba: eventos en memoria, sin consumidores y con secretos de prueba
+os.environ.setdefault("EVENTOS_BACKEND", "memoria")
+os.environ.setdefault("CONSUMIR_EVENTOS", "0")
+os.environ.setdefault("JWT_SECRETO", "secreto-de-pruebas")
+os.environ.setdefault("TOKEN_INTERNO", "token-interno-de-pruebas")
+os.environ.setdefault("MODO_DEMO", "1")
 from pathlib import Path
 
 import pytest
@@ -64,3 +71,30 @@ def db(Sesion):
     with Sesion() as sesion:
         yield sesion
         sesion.rollback()
+
+
+@pytest.fixture
+def eventos():
+    """Publicador en memoria: permite comprobar qué eventos emitió cada operación."""
+    from redalimenta_comun.eventos import PublicadorMemoria, usar_publicador
+    memoria = PublicadorMemoria()
+    usar_publicador(memoria)
+    return memoria
+
+
+@pytest.fixture
+def cliente(Sesion, eventos):
+    from fastapi.testclient import TestClient
+
+    from catalogo.app import app
+    from catalogo.db import usar_sesiones
+    usar_sesiones(Sesion)
+    return TestClient(app)
+
+
+def token(id_usuario: int, rol: str, verificacion: str = "APROBADA") -> dict:
+    from redalimenta_comun.seguridad import Actor, emitir_token
+    return {"Authorization": "Bearer " + emitir_token(Actor(id_usuario, rol, verificacion, f"Usuario {id_usuario}"))}
+
+
+INTERNO = {"X-Token-Interno": "token-interno-de-pruebas"}

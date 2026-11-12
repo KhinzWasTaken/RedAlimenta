@@ -33,3 +33,20 @@ def crear_motor(url: str | None = None):
 
 def crear_sesiones(url: str | None = None):
     return sessionmaker(bind=crear_motor(url), autoflush=False, expire_on_commit=False)
+
+
+_sesiones = None
+
+
+def sesiones() -> sessionmaker:
+    """Fábrica de sesiones del proceso (se crea al primer uso con DATABASE_URL)."""
+    global _sesiones
+    if _sesiones is None:
+        _sesiones = crear_sesiones()
+    return _sesiones
+
+
+def usar_sesiones(fabrica: sessionmaker) -> None:
+    """Permite a las pruebas apuntar el servicio a una base temporal."""
+    global _sesiones
+    _sesiones = fabrica

@@ -67,3 +67,17 @@ class ConfirmacionEntrega(Base):
     fecha_confirmacion: Mapped[datetime] = mapped_column(TS, server_default=func.now(), comment="Cuándo confirmó.")
     estado_confirmacion: Mapped[str] = mapped_column(ESTADO_CONFIRMACION, comment="CONFIRMADA o CON_INCIDENCIA.")
     observaciones: Mapped[str | None] = mapped_column(Text, comment="Comentario o detalle de la incidencia.")
+
+
+class AvisoVencimiento(Base):
+    """Añadido en el Sprint 5 (no está en el modelo del Sprint 3): memoria de la tarea de avisos.
+
+    Hace idempotente el aviso DONACION_POR_VENCER (S5-13): una donación se avisa una sola vez.
+    """
+
+    __tablename__ = "aviso_vencimiento"
+    __table_args__ = {"comment": "Donaciones ya avisadas como por vencer (idempotencia de la tarea RF8)."}
+    id_donacion: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False,
+        comment="Donación avisada (catalog-geo-service; sin FK entre bases, D-06).")
+    fecha_aviso: Mapped[datetime] = mapped_column(TS, server_default=func.now(), comment="Cuándo se avisó.")

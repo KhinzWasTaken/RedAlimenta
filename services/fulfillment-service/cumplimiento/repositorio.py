@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import config
-from .errores import Conflicto, ErrorDominio, NoEncontrado, TransicionInvalida
+from .errores import Conflicto, ErrorDominio, NoEncontrado, Prohibido, TransicionInvalida
 from .modelos import ConfirmacionEntrega, Entrega, Reserva
 
 ACTIVAS = ("PENDIENTE", "CONFIRMADA")
@@ -132,7 +132,7 @@ def registrar_confirmacion(db: Session, id_entrega: int, id_usuario: int, id_don
     e = obtener_entrega(db, id_entrega, bloquear=True)
     r = obtener_reserva(db, e.id_reserva, bloquear=True)
     if id_usuario not in (id_donante, r.id_receptor):
-        raise ErrorDominio("Solo el donante y el receptor confirman la entrega")
+        raise Prohibido("Solo el donante y el receptor confirman la entrega")
     if e.estado_entrega not in ("PROGRAMADA", "CON_INCIDENCIA"):
         raise TransicionInvalida(f"La entrega está {e.estado_entrega}")
     try:

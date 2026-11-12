@@ -12,3 +12,4 @@ frontend/dist/
 
 # Infraestructura local
 infra/.env
+*.egg-info/

@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .errores import Conflicto, ErrorDominio, NoEncontrado, TransicionInvalida
+from .errores import Conflicto, ErrorDominio, NoAutenticado, NoEncontrado, TransicionInvalida
 from .modelos import RegistroAuditoria, Rol, Usuario, VerificacionUsuario
 
 ITERACIONES = 120_000
@@ -76,9 +76,9 @@ def buscar_por_correo(db: Session, correo: str) -> Usuario | None:
 def autenticar(db: Session, correo: str, contrasena: str) -> Usuario:
     usuario = buscar_por_correo(db, correo)
     if usuario is None or not verificar_contrasena(contrasena, usuario.contrasena_hash):
-        raise ErrorDominio("Correo o contraseña incorrectos")
+        raise NoAutenticado("Correo o contraseña incorrectos")
     if usuario.estado_cuenta != "ACTIVA":
-        raise ErrorDominio("La cuenta está desactivada")
+        raise NoAutenticado("La cuenta está desactivada")
     return usuario
 
 

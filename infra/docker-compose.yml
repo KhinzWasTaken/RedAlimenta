@@ -22,5 +22,23 @@ services:
       timeout: 3s
       retries: 20
 
+  # Sprint 5 · Broker de eventos (exchange topic redalimenta.eventos). Consola: http://localhost:15672
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-redalimenta}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Define RABBITMQ_PASSWORD en infra/.env}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_CONSOLA_PORT:-15672}:15672"
+    volumes:
+      - datos-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
 volumes:
   datos-postgres:
+  datos-rabbitmq:

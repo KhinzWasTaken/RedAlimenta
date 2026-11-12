@@ -11,7 +11,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from . import config
-from .errores import ErrorDominio, NoEncontrado, TransicionInvalida
+from .errores import ErrorDominio, NoEncontrado, Prohibido, TransicionInvalida
 from .modelos import CategoriaAlimento, Donacion, NecesidadAlimentaria, UbicacionGeografica
 
 TRANSICIONES_DONACION = {
@@ -94,7 +94,7 @@ def actualizar_donacion(db: Session, id_donacion: int, id_donante: int, **cambio
         raise ErrorDominio(f"Campos no editables: {', '.join(sorted(no_permitidos))}")
     d = obtener_donacion(db, id_donacion, bloquear=True)
     if d.id_donante != id_donante:
-        raise ErrorDominio("Solo el donante dueño modifica la donación")
+        raise Prohibido("Solo el donante dueño modifica la donación")
     if d.estado_donacion != "DISPONIBLE":
         raise TransicionInvalida(f"Solo se modifica una donación DISPONIBLE (está {d.estado_donacion})")
     if "id_categoria" in cambios:
@@ -120,7 +120,7 @@ def transicionar_donacion(db: Session, id_donacion: int, nuevo: str) -> tuple[st
 
 def cancelar_donacion(db: Session, id_donacion: int, id_donante: int) -> Donacion:
     if obtener_donacion(db, id_donacion).id_donante != id_donante:
-        raise ErrorDominio("Solo el donante dueño cancela la donación")
+        raise Prohibido("Solo el donante dueño cancela la donación")
     return transicionar_donacion(db, id_donacion, "CANCELADA")[1]
 
 
@@ -159,7 +159,7 @@ def _necesidad_propia(db: Session, id_necesidad: int, id_receptor: int) -> Neces
     if n is None:
         raise NoEncontrado("Necesidad no encontrada")
     if n.id_receptor != id_receptor:
-        raise ErrorDominio("Un receptor solo modifica sus propias necesidades")
+        raise Prohibido("Un receptor solo modifica sus propias necesidades")
     return n
 
 
@@ -277,3 +277,89 @@ def buscar_donaciones(db: Session, *, id_receptor: int, lat: float | None = None
         "w_u": config.PESO_URGENCIA, "w_c": config.PESO_CERCANIA, "w_v": config.PESO_VENCIMIENTO, "limite": limite,
     })
     return [dict(f) for f in db.execute(text(sql), parametros).mappings()]
+
+
+# --- Lecturas con detalle (para la API) ----------------------------------------
+
+SQL_DETALLE_DONACION = """
+SELECT d.id_donacion, d.id_donante, d.id_categoria, c.nombre_categoria AS categoria, d.nombre_alimento,
+       d.descripcion, d.cantidad, d.unidad_medida, d.fecha_vencimiento, d.fecha_publicacion,
+       d.condiciones_recogida, d.estado_donacion, u.direccion_referencia, u.ciudad, u.departamento,
+       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon
+FROM donacion d
+JOIN categoria_alimento c ON c.id_categoria = d.id_categoria
+JOIN ubicacion_geografica u ON u.id_ubicacion = d.id_ubicacion
+WHERE {filtro}
+ORDER BY d.id_donacion DESC
+LIMIT 500
+"""
+SQL_DETALLE_NECESIDAD = """
+SELECT n.id_necesidad, n.id_receptor, n.id_categoria, c.nombre_categoria AS categoria, n.descripcion,
+       n.cantidad_requerida, n.unidad_medida, n.nivel_urgencia, n.fecha_limite, n.estado_necesidad,
+       u.direccion_referencia, u.ciudad, u.departamento,
+       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon
+FROM necesidad_alimentaria n
+JOIN categoria_alimento c ON c.id_categoria = n.id_categoria
+JOIN ubicacion_geografica u ON u.id_ubicacion = n.id_ubicacion
+WHERE {filtro}
+ORDER BY n.id_necesidad DESC
+"""
+
+
+def detalle_donaciones(db: Session, ids: list[int] | None = None, id_donante: int | None = None,
+                       estado: str | None = None) -> list[dict]:
+    filtros, params = ["TRUE"], {}
+    if ids is not None:
+        filtros.append("d.id_donacion = ANY(:ids)")
+        params["ids"] = list(ids)
+    if id_donante is not None:
+        filtros.append("d.id_donante = :id_donante")
+        params["id_donante"] = id_donante
+    if estado:
+        filtros.append("d.estado_donacion = :estado")
+        params["estado"] = estado
+    sql = SQL_DETALLE_DONACION.format(filtro=" AND ".join(filtros))
+    return [dict(f) for f in db.execute(text(sql), params).mappings()]
+
+
+def detalle_necesidades(db: Session, ids: list[int] | None = None, id_receptor: int | None = None) -> list[dict]:
+    filtros, params = ["TRUE"], {}
+    if ids is not None:
+        filtros.append("n.id_necesidad = ANY(:ids)")
+        params["ids"] = list(ids)
+    if id_receptor is not None:
+        filtros.append("n.id_receptor = :id_receptor")
+        params["id_receptor"] = id_receptor
+    return [dict(f) for f in db.execute(text(SQL_DETALLE_NECESIDAD.format(filtro=" AND ".join(filtros))),
+                                        params).mappings()]
+
+
+def donaciones_por_vencer(db: Session, horas: float, ahora: datetime | None = None) -> list[dict]:
+    """DISPONIBLES o RESERVADAS que vencen dentro de `horas` (aviso RF8, D-09)."""
+    return [dict(f) for f in db.execute(text("""
+        SELECT id_donacion, id_donante, nombre_alimento, fecha_vencimiento, estado_donacion FROM donacion
+        WHERE estado_donacion IN ('DISPONIBLE', 'RESERVADA')
+          AND fecha_vencimiento > coalesce(:ahora, now())
+          AND fecha_vencimiento <= coalesce(:ahora, now()) + make_interval(secs => :segundos)
+        ORDER BY fecha_vencimiento"""), {"ahora": ahora, "segundos": horas * 3600}).mappings()]
+
+
+def crear_categoria(db: Session, nombre: str, descripcion: str | None = None) -> CategoriaAlimento:
+    siguiente = (db.scalar(select(func.max(CategoriaAlimento.id_categoria))) or 0) + 1
+    c = CategoriaAlimento(id_categoria=siguiente, nombre_categoria=nombre.strip(), descripcion=descripcion)
+    db.add(c)
+    db.flush()
+    return c
+
+
+def actualizar_categoria(db: Session, id_categoria: int, nombre: str | None = None,
+                         descripcion: str | None = None) -> CategoriaAlimento:
+    c = db.get(CategoriaAlimento, id_categoria)
+    if c is None:
+        raise NoEncontrado("Categoría no encontrada")
+    if nombre:
+        c.nombre_categoria = nombre.strip()
+    if descripcion is not None:
+        c.descripcion = descripcion
+    db.flush()
+    return c
