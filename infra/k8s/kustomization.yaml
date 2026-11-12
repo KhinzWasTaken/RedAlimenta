@@ -1,0 +1,19 @@
+# RedAlimenta en Kubernetes local (S6-06). Se aplica con `python scripts/k8s.py desplegar`, que antes crea el
+# Secret (desde infra/.env) y el ConfigMap con el script de inicio de PostgreSQL.
+#   kubectl apply -k infra/k8s
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: redalimenta
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: redalimenta
+    includeSelectors: false
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - rabbitmq.yaml
+  - migraciones-job.yaml
+  - servicios.yaml
+  - tareas-cronjob.yaml
+  - gateway.yaml

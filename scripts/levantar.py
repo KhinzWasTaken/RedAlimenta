@@ -57,7 +57,7 @@ def main(argv: list[str]) -> int:
     for nombre, s in RUTAS.items():
         print(f"» {s['carpeta']} en http://localhost:{s['puerto']}/docs")
         procesos.append(subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", f"{s['paquete']}.app:app", "--port", str(s["puerto"])],
+            [sys.executable, "-m", "uvicorn", f"{s['paquete']}.app:app", "--port", str(s["puerto"]), "--no-access-log"],
             cwd=RAIZ / "services" / s["carpeta"], env=entorno_servicio(nombre, env)))
     if "--sin-frontend" not in argv:
         npm = shutil.which("npm")

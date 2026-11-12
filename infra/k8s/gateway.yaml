@@ -1,0 +1,61 @@
+# Gateway (S6-03): única entrada pública. Sirve el frontend y reparte /api; /internal no se publica.
+# Acceso local: Ingress (si el clúster tiene controlador) o NodePort 30080 → http://localhost:30080
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+spec:
+  type: NodePort
+  selector: {app: gateway}
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: gateway}
+  template:
+    metadata:
+      labels: {app: gateway}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 101}
+      containers:
+        - name: gateway
+          image: redalimenta/gateway:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DOMINIO_SERVICIOS
+              valueFrom: {configMapKeyRef: {name: redalimenta-config, key: DOMINIO_SERVICIOS}}
+          readinessProbe:
+            httpGet: {path: /salud, port: 8080}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /salud, port: 8080}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {memory: 128Mi}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: redalimenta
+spec:
+  rules:
+    - host: redalimenta.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port: {number: 8080}

@@ -1,0 +1,10 @@
+# Clúster kind para RedAlimenta (alternativa a Kubernetes de Docker Desktop):
+#   kind create cluster --name redalimenta --config scripts/kind.yaml
+# Publica el NodePort del gateway (30080) en http://localhost:30080
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 30080

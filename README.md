@@ -13,11 +13,55 @@ Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 | --- | --- | --- |
 | 4 | Base transaccional: DDL, DML, CRUD, OLTP | ✅ Listo |
 | 5 | Aplicación: API REST por servicio, eventos, frontend | ✅ Listo |
-| 6 | Docker, gateway, Kubernetes | Pendiente |
+| 6 | Docker, gateway, Kubernetes | ✅ Listo (Kubernetes validado sin clúster; ver abajo) |
 | 7 | Almacén de datos y ETL | Pendiente |
 | 8 | Indicadores, tablero y documentación final | Pendiente |
 
-### Ejecutar el sistema completo (Sprint 5)
+### Sistema completo en Docker (Sprint 6)
+
+Una sola dirección pública, el gateway, en **http://localhost:8080**. Con `infra/.env` creado (ver abajo):
+
+```bash
+docker compose -f infra/docker-compose.yml --env-file infra/.env --profile app up -d --build
+```
+
+Levanta PostgreSQL, RabbitMQ, las migraciones con datos semilla, los cinco servicios (cada uno sin
+privilegios de root y sin secretos en la imagen) y el gateway nginx con el frontend. Los servicios no
+publican puertos; `/internal` no se expone. Comprobaciones contra el gateway:
+
+| Comando | Qué demuestra |
+| --- | --- |
+| `python scripts/e2e.py --base http://localhost:8080` | Flujo completo a través del gateway (S6-02) |
+| `python scripts/resiliencia.py` | Con catalog caído, reservar responde 503 sin reservas huérfanas (S6-04) |
+| `python scripts/carga_reservas.py --base http://localhost:8080` | 20 reservas simultáneas: una 201 y 19 con 409 (S6-08) |
+| `docker compose ... logs \| findstr <id>` (`grep` en macOS/Linux) | Una operación seguida por su `X-Correlation-Id` en todos los servicios (S6-09) |
+
+Para probar con réplicas: agrega `--scale catalog=2 --scale fulfillment=2` al comando `up`.
+
+### Kubernetes local (Sprint 6)
+
+Manifiestos en `infra/k8s/` (Deployment y Service por servicio, dos réplicas y PodDisruptionBudget para
+catalog y fulfillment, sondas de vida y preparación, ConfigMap, Secret generado desde `infra/.env`, Job de
+migraciones, CronJob de tareas e Ingress). Con **Kubernetes de Docker Desktop** activado
+(Settings → Kubernetes) o con kind (`kind create cluster --name redalimenta --config scripts/kind.yaml`):
+
+```bash
+python scripts/k8s.py imagenes
+```
+
+```bash
+python scripts/k8s.py desplegar
+```
+
+```bash
+python scripts/k8s.py probar
+```
+
+La app queda en http://localhost:30080. `probar` corre el flujo completo, las 20 reservas contra dos
+réplicas y borra un pod de catalog para comprobar que el servicio sigue respondiendo.
+Arquitectura, llamadas síncronas y asíncronas y qué pasa si cae cada servicio: `docs/arquitectura/soa.md`.
+
+### Ejecutar el sistema completo en desarrollo (Sprint 5)
 
 Requisitos: Docker Desktop, Python 3.11+ y Node.js 18+. Una vez:
 
@@ -51,7 +95,7 @@ Abre **http://localhost:5173**. Sin `--reiniciar` conserva los datos. Ctrl+C det
 Cómo encajan: cada servicio tiene su base y su rol de base de datos; los cambios de estado viajan como
 eventos por RabbitMQ (auditoría, notificaciones e historial los consumen); la única llamada directa es
 fulfillment → catalog-geo para cambiar el estado de una donación (D-01). En desarrollo, Vite reparte cada
-prefijo de `/api` al servicio que lo atiende según `infra/rutas.json` (en el Sprint 6 lo hará el gateway).
+prefijo de `/api` al servicio que lo atiende según `infra/rutas.json` (en Docker y Kubernetes lo hace el gateway).
 
 Comprobaciones:
 
