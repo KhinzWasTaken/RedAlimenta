@@ -17,6 +17,19 @@ Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 | 7 | Almacén de datos y ETL | ✅ Listo |
 | 8 | Indicadores, tablero, trazabilidad, seguridad y documentación final | ✅ Listo |
 
+### Probar en un PC con Windows
+
+En PowerShell, desde la raíz del repositorio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\preparar_windows.ps1 -Instalar -Levantar
+```
+
+Instala con winget lo que falte (Git, Docker Desktop, Python, Node.js), corrige los saltos de línea de los
+scripts que corren en contenedores, crea o completa `infra\.env` con claves aleatorias, cambia de puerto si
+alguno está ocupado, crea `.venv` con las dependencias de Python y levanta todo en Docker. Se puede repetir
+sin perder datos. Después: **http://localhost:8080**.
+
 ### Documentación
 
 | Para | Documento |

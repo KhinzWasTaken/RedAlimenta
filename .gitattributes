@@ -1,0 +1,8 @@
+# Los archivos que se ejecutan dentro de contenedores Linux deben conservar saltos de línea LF,
+# aunque el repositorio se clone en Windows (core.autocrlf=true).
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.conf      text eol=lf
+*.template  text eol=lf
+# Los scripts de PowerShell, con CRLF.
+*.ps1       text eol=crlf
