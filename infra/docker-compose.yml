@@ -1,0 +1,26 @@
+# Sprint 4 · Base transaccional: un servidor PostgreSQL con PostGIS y cuatro bases separadas,
+# una por servicio (identity, catalog-geo, fulfillment, notification).
+# Uso:  docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+name: redalimenta
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en infra/.env}
+      # Contraseña de los roles de aplicación (uno por base); solo para desarrollo local
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Define APP_DB_PASSWORD en infra/.env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  datos-postgres:
