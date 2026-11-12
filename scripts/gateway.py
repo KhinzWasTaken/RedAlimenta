@@ -20,6 +20,10 @@ PLANTILLA = """# GENERADO por scripts/gateway.py desde infra/rutas.json. No edit
 # Gateway de RedAlimenta (S6-03): única dirección pública. Sirve el frontend y reparte /api por servicio.
 # Las rutas /internal (servicio a servicio, D-01) no se publican.
 
+# S8-06: límite de intentos de inicio de sesión y registro por dirección IP (fuerza bruta)
+limit_req_zone $binary_remote_addr zone=autenticacion:10m rate=30r/m;
+limit_req_status 429;
+
 map $http_x_correlation_id $correlacion {{
     ""      $request_id;
     default $http_x_correlation_id;
@@ -45,6 +49,13 @@ server {{
     proxy_read_timeout 30s;
     proxy_hide_header X-Correlation-Id;  # la pone el gateway una sola vez
     add_header X-Correlation-Id $correlacion always;
+    # Cabeceras de seguridad (S8-06)
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "geolocation=(self), camera=(), microphone=()" always;
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'" always;
+    server_tokens off;
 
     location = /salud {{
         default_type application/json;
@@ -55,6 +66,12 @@ server {{
     location ^~ /internal {{
         default_type application/json;
         return 404 '{{"detail":"Recurso no encontrado"}}';
+    }}
+
+    location ~ ^/api/auth/(login|registro)$ {{
+        limit_req zone=autenticacion burst=20 nodelay;
+        set $destino http://identity${{DOMINIO_SERVICIOS}}:8000;
+        proxy_pass $destino;
     }}
 
 {rutas}

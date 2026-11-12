@@ -26,6 +26,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<SQL
 CREATE ROLE dwh_lector LOGIN PASSWORD '${APP_DB_PASSWORD}';
 GRANT CONNECT ON DATABASE redalimenta_identity, redalimenta_catalog, redalimenta_fulfillment,
                           redalimenta_analytics TO dwh_lector;
+-- analytics-service lee el almacén para la API de indicadores (S8-01)
+GRANT CONNECT ON DATABASE redalimenta_dwh TO analytics_app;
 SQL
 
 # PostGIS solo en la base del catálogo (las demás no manejan geografía)

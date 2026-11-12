@@ -120,6 +120,8 @@ services:
     environment:
       <<: *comunes
       DATABASE_URL: postgresql+psycopg://analytics_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_analytics
+      # Lectura del almacén para la API de indicadores (S8-01): mismo rol, solo SELECT sobre dw
+      DWH_DATABASE_URL: postgresql+psycopg://analytics_app:${APP_DB_PASSWORD}@postgres:5432/redalimenta_dwh
 
   # ETL del almacén (S7-07): carga completa al arrancar y luego carga continua desde eventos cada 5 minutos.
   # Cada ejecución queda en etl.ejecucion (con reintentos) y genera su informe en etl.resultado_calidad.

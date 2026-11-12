@@ -19,13 +19,15 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "dwh"))
+sys.path.insert(0, str(RAIZ / "services" / "analytics-service"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import URL  # noqa: E402
 
-from almacen import calidad, indicadores  # noqa: E402
+from almacen import calidad  # noqa: E402
 from almacen.cargar import cargar  # noqa: E402
+from analitica import indicadores  # noqa: E402
 from bd import _leer_env  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
@@ -76,14 +78,14 @@ def main(argv: list[str]) -> int:
                 "fecha": ultima["fin"].isoformat(timespec="seconds"), "filas": ultima["filas"]}), encoding="utf-8")
             print(f"» {destino.relative_to(RAIZ)}")
             return 0
-        desde, hasta = date(2025, 1, 1), date.today()
+        f = indicadores.Filtros(date(2025, 1, 1), date.today())
         for nombre in indicadores.INDICADORES:
-            serie = indicadores.serie(c, nombre, desde, hasta, "anio")
-            print(f"{nombre}: " + ", ".join(f"{f['periodo'].year}={f['valor']}" for f in serie))
-        print("volumen entregado:", ", ".join(f"{f['cantidad']:.0f} {f['unidad_medida']}"
-                                             for f in indicadores.volumen_distribuido(c, desde, hasta)))
-        print("cobertura (5 primeras):", ", ".join(f"{f['ciudad']} {f['donaciones']} ({f['tasa_entrega']:.0%})"
-                                                  for f in indicadores.cobertura(c, desde, hasta)[:5]))
+            serie = indicadores.serie(c, nombre, f, "anio")
+            print(f"{nombre}: " + ", ".join(f"{p['periodo'].year}={p['valor']:g}" for p in serie))
+        print("volumen entregado:", ", ".join(f"{v['cantidad']:.0f} {v['unidad_medida']}"
+                                             for v in indicadores.volumen_distribuido(c, f)))
+        print("cobertura (5 primeras):", ", ".join(f"{r['ciudad']} {r['donaciones']} ({r['tasa_entrega']:.0%})"
+                                                  for r in indicadores.cobertura(c, f)[:5]))
     return 0
 
 

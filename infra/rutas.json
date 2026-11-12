@@ -19,7 +19,7 @@
     },
     "analytics": {
       "carpeta": "analytics-service", "paquete": "analitica", "puerto": 8005,
-      "prefijos": ["/api/historial"]
+      "prefijos": ["/api/historial", "/api/indicadores", "/api/reportes"]
     }
   }
 }

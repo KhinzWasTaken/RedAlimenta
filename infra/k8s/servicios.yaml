@@ -321,6 +321,8 @@ spec:
               valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: TOKEN_INTERNO}}
             - name: DATABASE_URL
               value: postgresql+psycopg://analytics_app:$(APP_DB_PASSWORD)@postgres:5432/redalimenta_analytics
+            - name: DWH_DATABASE_URL
+              value: postgresql+psycopg://analytics_app:$(APP_DB_PASSWORD)@postgres:5432/redalimenta_dwh
             - name: RABBITMQ_URL
               value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672/%2F
           readinessProbe:

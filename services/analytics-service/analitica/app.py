@@ -3,8 +3,8 @@ from redalimenta_comun.app import crear_app
 
 from .consumidor import consumidores
 from .db import sesiones
-from .rutas import rutas
+from .rutas import rutas, rutas_indicadores
 
-app = crear_app("analytics-service", [rutas], sesiones, consumidores,
-                "Historial inmutable de eventos y trazabilidad (RF10). Indicadores y reportes en los "
-                "Sprints 7 y 8 (RF9).")
+app = crear_app("analytics-service", [rutas, rutas_indicadores], sesiones, consumidores,
+                "Historial inmutable de eventos y trazabilidad (RF10); indicadores, cobertura y reportes "
+                "CSV sobre el almacén de datos (RF9).")

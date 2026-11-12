@@ -98,3 +98,31 @@ def token(id_usuario: int, rol: str, verificacion: str = "APROBADA") -> dict:
 
 
 INTERNO = {"X-Token-Interno": "token-interno-de-pruebas"}
+
+
+@pytest.fixture(scope="session")
+def almacen():
+    """Almacén temporal (migraciones de dwh/) con 1.500 donaciones sintéticas, para la API de indicadores."""
+    import sys
+    raiz = SERVICIO.parents[1]
+    sys.path.insert(0, str(raiz / "dwh"))
+    from almacen.cargar import cargar
+
+    from analitica.almacen import usar_motor
+    admin = create_engine(ADMIN_URL, isolation_level="AUTOCOMMIT")
+    nombre = f"prueba_dwh_api_{uuid.uuid4().hex[:8]}"
+    with admin.connect() as c:
+        c.execute(text(f"CREATE DATABASE {nombre}"))
+    url = make_url(ADMIN_URL).set(database=nombre).render_as_string(hide_password=False)
+    cfg = Config(str(raiz / "dwh" / "alembic.ini"))
+    cfg.attributes["url"] = url
+    command.upgrade(cfg, "head")
+    motor = create_engine(url)
+    cargar(motor, "sintetica", n_sinteticas=1500, reintentos=1)
+    usar_motor(motor)
+    yield motor
+    usar_motor(None)
+    motor.dispose()
+    with admin.connect() as c:
+        c.execute(text(f"DROP DATABASE IF EXISTS {nombre} WITH (FORCE)"))
+    admin.dispose()

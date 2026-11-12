@@ -6,7 +6,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from almacen import indicadores, sintetico
+from almacen import sintetico
+from analitica import indicadores
 from almacen.cargar import cargar
 from almacen.extraer import motor_lectura
 from redalimenta_comun.eventos import Evento
@@ -116,29 +117,26 @@ def test_calidad_detecta_problemas(motor_dwh):
 
 def test_indicadores_iguales_a_consulta_manual(motor_dwh):
     cargar(motor_dwh, "sintetica", n_sinteticas=2000, reintentos=1)
-    desde, hasta = date(2025, 1, 1), date.today()
+    f = indicadores.Filtros(date(2025, 1, 1), date.today())
     with motor_dwh.connect() as c:
-        donaciones = sum(f["valor"] for f in indicadores.serie(c, "donaciones_registradas", desde, hasta, "anio"))
-        entregas = sum(f["valor"] for f in indicadores.serie(c, "entregas_finalizadas", desde, hasta, "mes"))
-        volumen = {f["unidad_medida"]: float(f["cantidad"]) for f in indicadores.volumen_distribuido(c, desde, hasta)}
-        bogota = indicadores.serie(c, "donaciones_registradas", desde, hasta, "anio", ciudad="Bogotá")
-        cobertura = indicadores.cobertura(c, desde, hasta)
+        donaciones = sum(p["valor"] for p in indicadores.serie(c, "donaciones_registradas", f, "anio"))
+        entregas = sum(p["valor"] for p in indicadores.serie(c, "entregas_finalizadas", f, "mes"))
+        volumen = {v["unidad_medida"]: v["cantidad"] for v in indicadores.volumen_distribuido(c, f)}
+        bogota = indicadores.total(c, "donaciones_registradas", indicadores.Filtros(f.desde, f.hasta, ciudad="Bogotá"))
+        cobertura = indicadores.cobertura(c, f)
         manual = c.execute(text("""
-            SELECT count(*) FILTER (WHERE TRUE),
-                   (SELECT count(*) FROM stg.entrega WHERE estado_entrega = 'COMPLETADA'),
+            SELECT count(*), (SELECT count(*) FROM stg.entrega WHERE estado_entrega = 'COMPLETADA'),
                    count(*) FILTER (WHERE ciudad = 'Bogotá')
             FROM stg.donacion""")).one()
         volumen_manual = dict(c.execute(text("""
             SELECT d.unidad_medida, sum(d.cantidad)::float FROM stg.entrega e
             JOIN stg.reserva r USING (origen_dato, id_reserva) JOIN stg.donacion d USING (origen_dato, id_donacion)
             WHERE e.estado_entrega = 'COMPLETADA' GROUP BY 1""")).all())
-    assert donaciones == manual[0] and entregas == manual[1]
-    assert sum(f["valor"] for f in bogota) == manual[2]
+        proporcion = indicadores.serie(c, "proporcion_canceladas_vencidas", f, "anio")
+    assert donaciones == manual[0] and entregas == manual[1] and bogota == manual[2]
     assert volumen == pytest.approx(volumen_manual)
     assert cobertura[0]["ciudad"] == "Bogotá" and cobertura[0]["latitud"] is not None
-    with motor_dwh.connect() as c:
-        proporcion = indicadores.serie(c, "proporcion_canceladas_vencidas", desde, hasta, "anio")
-    assert all(0 < float(f["valor"]) < 1 for f in proporcion)
+    assert all(0 < p["valor"] < 1 for p in proporcion)
 
 
 def test_carga_fallida_se_registra_se_reintenta_y_no_deja_nada_a_medias(motor_dwh, fuentes):

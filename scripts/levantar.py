@@ -35,6 +35,8 @@ def entorno_servicio(nombre: str, env: dict) -> dict:
         "MODO_DEMO": env.get("MODO_DEMO", "1"),
         "PYTHONUNBUFFERED": "1",
     })
+    if nombre == "analytics":  # la API de indicadores lee el almacén (S8-01)
+        base["DWH_DATABASE_URL"] = base["DATABASE_URL"].replace("/redalimenta_analytics", "/redalimenta_dwh")
     return base
 
 

@@ -92,3 +92,15 @@ export function restante(iso) {
   const min = Math.floor(ms / 60000)
   return min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`
 }
+
+// Descarga un reporte (CSV) de la API con la sesión actual (S8-02)
+export async function descargar(ruta, nombreArchivo) {
+  const res = await fetch(`/api${ruta}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) throw new ErrorApi(`No se pudo descargar (${res.status})`, res.status)
+  const url = URL.createObjectURL(await res.blob())
+  const enlace = Object.assign(document.createElement('a'), { href: url, download: nombreArchivo })
+  document.body.appendChild(enlace)
+  enlace.click()
+  enlace.remove()
+  URL.revokeObjectURL(url)
+}

@@ -92,6 +92,8 @@ def preparar() -> None:
             c.execute(text(f"CREATE ROLE dwh_lector LOGIN PASSWORD '{clave}'"))
         for nombre in FUENTES_DWH:
             c.execute(text(f"GRANT CONNECT ON DATABASE redalimenta_{nombre} TO dwh_lector"))
+        # analytics-service lee el almacén para la API de indicadores (S8-01)
+        c.execute(text("GRANT CONNECT ON DATABASE redalimenta_dwh TO analytics_app"))
     admin.dispose()
 
 

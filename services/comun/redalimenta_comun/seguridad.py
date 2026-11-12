@@ -20,6 +20,8 @@ def _secreto() -> str:
     valor = os.environ.get("JWT_SECRETO")
     if not valor:
         raise RuntimeError("Define JWT_SECRETO (el mismo en todos los servicios)")
+    if len(valor) < 32:  # S8-06: una clave corta permitiría adivinar la firma de los tokens
+        raise RuntimeError("JWT_SECRETO debe tener al menos 32 caracteres aleatorios")
     return valor
 
 

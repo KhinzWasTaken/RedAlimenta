@@ -206,3 +206,11 @@ code { background: var(--borde); padding: 1px 5px; border-radius: 4px; }
   .tabla { font-size: 0.88rem; }
   .tabla td:last-child { white-space: nowrap; }
 }
+
+/* Tablero (S8-04): solo lo necesario para que sea usable; el diseño se revisa después */
+.filtros-tablero { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.filtros-tablero .casilla { flex-direction: row; align-items: center; gap: 8px; }
+.filtros-tablero .casilla input { width: auto; min-height: 0; }
+.tarjetas-resumen { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.tarjetas-resumen h3 { font-size: 1.5rem; margin: 4px 0 0; }
+.grafica { width: 100%; height: auto; color: var(--tenue); }
