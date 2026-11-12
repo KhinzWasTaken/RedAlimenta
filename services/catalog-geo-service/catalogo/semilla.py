@@ -92,7 +92,8 @@ def sembrar(db: Session) -> bool:
     ahora = db.scalar(func.now())
     for (id_d, donante, alimento, cat, cant, unidad, horas, estado, direccion, ciudad, depto, lat, lon,
          condiciones) in DONACIONES:
-        publicada = ahora - timedelta(days=3) if horas is not None and horas < 0 else ahora - timedelta(hours=2)
+        # Publicadas antes que sus reservas semilla (la más antigua es de hace 26 h)
+        publicada = ahora - timedelta(days=3) if horas is not None and horas < 0 else ahora - timedelta(hours=30)
         db.add(Donacion(
             id_donacion=id_d, id_donante=donante, id_categoria=cat,
             id_ubicacion=_ubicacion(db, direccion, ciudad, depto, lat, lon), nombre_alimento=alimento,

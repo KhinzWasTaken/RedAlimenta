@@ -45,7 +45,9 @@ Las cuatro bases usan identificadores fijos para que las referencias lógicas en
 | 9 | 7 | Cali (Siloé) | Panadería | MEDIA | CERRADA |
 
 Las fechas (vencimientos, plazos de reserva, entregas) se calculan relativas al momento de sembrar,
-para que la demo siempre tenga donaciones vigentes y por vencer.
+para que la demo siempre tenga donaciones vigentes y por vencer. Las donaciones se publican 30 horas antes
+de sembrar, para que ninguna reserva semilla quede anterior a su donación (lo verifica la regla de calidad
+`fechas_en_orden` del almacén).
 
 ## Notificaciones (notification)
 

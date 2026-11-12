@@ -1,0 +1,95 @@
+# ETL del almacén de datos (S7-07). La carga inicial (sintéticos + histórica + eventos) es un Job; después,
+# la carga continua desde eventos corre cada 10 minutos y una carga histórica completa cada noche.
+# Cada ejecución queda en etl.ejecucion; el código reintenta hasta 3 veces y Kubernetes vuelve a intentar
+# el Job si falla (backoffLimit). concurrencyPolicy: Forbid evita dos cargas a la vez.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: etl-carga-inicial
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: {app: etl}
+    spec:
+      restartPolicy: OnFailure
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: etl
+          image: redalimenta/herramientas:local
+          imagePullPolicy: IfNotPresent
+          command: ["python", "scripts/etl.py", "cargar", "completa"]
+          env:
+            - {name: PGHOST, value: postgres}
+            - {name: POSTGRES_PORT, value: "5432"}
+            - name: APP_DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: APP_DB_PASSWORD}}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 768Mi}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etl-eventos
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels: {app: etl}
+        spec:
+          restartPolicy: OnFailure
+          securityContext: {runAsNonRoot: true, runAsUser: 10001}
+          containers:
+            - name: etl
+              image: redalimenta/herramientas:local
+              imagePullPolicy: IfNotPresent
+              command: ["python", "scripts/etl.py", "cargar", "eventos"]
+              env:
+                - {name: PGHOST, value: postgres}
+                - {name: POSTGRES_PORT, value: "5432"}
+                - name: APP_DB_PASSWORD
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: APP_DB_PASSWORD}}
+              resources:
+                requests: {cpu: 100m, memory: 256Mi}
+                limits: {memory: 768Mi}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etl-historica
+spec:
+  schedule: "17 3 * * *"
+  timeZone: America/Bogota
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels: {app: etl}
+        spec:
+          restartPolicy: OnFailure
+          securityContext: {runAsNonRoot: true, runAsUser: 10001}
+          containers:
+            - name: etl
+              image: redalimenta/herramientas:local
+              imagePullPolicy: IfNotPresent
+              command: ["python", "scripts/etl.py", "cargar", "historica"]
+              env:
+                - {name: PGHOST, value: postgres}
+                - {name: POSTGRES_PORT, value: "5432"}
+                - name: APP_DB_PASSWORD
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: APP_DB_PASSWORD}}
+              resources:
+                requests: {cpu: 100m, memory: 256Mi}
+                limits: {memory: 768Mi}

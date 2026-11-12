@@ -114,6 +114,20 @@ Triggers:
 
 - `trg_auditoria_solo_insercion` → `fn_auditoria_solo_insercion()`
 
+### `evento_procesado`
+
+Idempotencia del consumidor: un id_evento se procesa una sola vez.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_evento` | uuid | no |  | Identificador del evento recibido. |
+| `cola` | character varying(60) | no |  | Cola de RabbitMQ que lo entregó. |
+| `fecha_proceso` | timestamp with time zone | no | now() | Cuándo se procesó. |
+
+Restricciones:
+
+- **PK** `pk_evento_procesado`: `PRIMARY KEY (id_evento)`
+
 ## Base `redalimenta_catalog` (catalog-geo-service)
 
 **Tipos enumerados (D-03)**
@@ -317,6 +331,19 @@ Restricciones:
 
 - `ix_confirmacion_entrega_id_entrega`: `btree (id_entrega)`
 
+### `aviso_vencimiento`
+
+Donaciones ya avisadas como por vencer (idempotencia de la tarea RF8).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_donacion` | bigint | no |  | Donación avisada (catalog-geo-service; sin FK entre bases, D-06). |
+| `fecha_aviso` | timestamp with time zone | no | now() | Cuándo se avisó. |
+
+Restricciones:
+
+- **PK** `pk_aviso_vencimiento`: `PRIMARY KEY (id_donacion)`
+
 ## Base `redalimenta_notification` (notification-service)
 
 **Tipos enumerados (D-03)**
@@ -352,3 +379,470 @@ Restricciones:
 Triggers:
 
 - `trg_notificacion_validar` → `fn_notificacion_validar()`
+
+### `evento_procesado`
+
+Idempotencia del consumidor: un id_evento se procesa una sola vez.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_evento` | uuid | no |  | Identificador del evento recibido. |
+| `cola` | character varying(60) | no |  | Cola de RabbitMQ que lo entregó. |
+| `fecha_proceso` | timestamp with time zone | no | now() | Cuándo se procesó. |
+
+Restricciones:
+
+- **PK** `pk_evento_procesado`: `PRIMARY KEY (id_evento)`
+
+## Base `redalimenta_analytics` (analytics-service)
+
+### `historial_evento`
+
+Eventos de todos los servicios, tal como se publicaron. Solo inserción.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_evento` | uuid | no |  | Identificador del evento; repetido = mismo evento (idempotencia). |
+| `tipo` | character varying(60) | no |  | Tipo: RESERVA_CREADA, ENTREGA_CONFIRMADA... |
+| `version` | smallint | no |  | Versión del esquema del evento. |
+| `origen` | character varying(40) | no |  | Servicio que lo publicó. |
+| `fecha` | timestamp with time zone | no |  | Cuándo ocurrió (según el origen). |
+| `id_actor` | bigint | sí |  | Usuario que lo provocó; NULL = sistema. |
+| `entidad` | character varying(40) | no |  | Entidad afectada. |
+| `id_entidad` | bigint | no |  | Identificador del registro afectado. |
+| `estado_anterior` | character varying(40) | sí |  | Estado antes del cambio. |
+| `estado_nuevo` | character varying(40) | sí |  | Estado después del cambio. |
+| `datos` | jsonb | no |  | Contexto del evento (participantes, alimento...). |
+| `fecha_recepcion` | timestamp with time zone | no | now() | Cuándo lo recibió analytics. |
+| `id_correlacion` | character varying(64) | sí |  | Operación que lo originó (S6-09); une eventos de varios servicios. |
+
+Restricciones:
+
+- **PK** `pk_historial_evento`: `PRIMARY KEY (id_evento)`
+
+Índices:
+
+- `ix_historial_actor`: `btree (id_actor)`
+- `ix_historial_datos`: `gin (datos)`
+- `ix_historial_entidad`: `btree (entidad, id_entidad)`
+- `ix_historial_evento_id_correlacion`: `btree (id_correlacion)`
+- `ix_historial_fecha`: `btree (fecha)`
+
+Triggers:
+
+- `trg_historial_solo_insercion` → `fn_historial_solo_insercion()`
+
+## Base `redalimenta_dwh` (almacén de datos)
+
+### `dw.dim_tiempo`
+
+Calendario (un día por fila, 2020–2030). sk_tiempo = AAAAMMDD; -1 = sin fecha.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_tiempo` | integer | no |  |  |
+| `fecha` | date | sí |  |  |
+| `anio` | smallint | sí |  |  |
+| `trimestre` | smallint | sí |  |  |
+| `mes` | smallint | sí |  |  |
+| `nombre_mes` | character varying(12) | sí |  |  |
+| `semana_iso` | smallint | sí |  |  |
+| `dia` | smallint | sí |  |  |
+| `dia_semana` | smallint | sí |  |  |
+| `nombre_dia` | character varying(12) | sí |  |  |
+| `es_fin_de_semana` | boolean | sí |  |  |
+
+Restricciones:
+
+- **PK** `dim_tiempo_pkey`: `PRIMARY KEY (sk_tiempo)`
+- **UNIQUE** `dim_tiempo_fecha_key`: `UNIQUE (fecha)`
+
+### `dw.dim_categoria`
+
+Categorías de alimentos (tipo 1: se sobrescribe el nombre). -1 = sin categoría.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_categoria` | integer | no | nextval('dw.dim_categoria_sk_categoria_seq'::regclass) |  |
+| `id_categoria` | integer | sí |  |  |
+| `nombre_categoria` | character varying(60) | no |  |  |
+
+Restricciones:
+
+- **PK** `dim_categoria_pkey`: `PRIMARY KEY (sk_categoria)`
+- **UNIQUE** `dim_categoria_id_categoria_key`: `UNIQUE (id_categoria)`
+
+### `dw.dim_ubicacion`
+
+Geografía al nivel de ciudad (jerarquía departamento → ciudad) con un punto representativo para mapas.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_ubicacion` | integer | no | nextval('dw.dim_ubicacion_sk_ubicacion_seq'::regclass) |  |
+| `departamento` | character varying(80) | no |  |  |
+| `ciudad` | character varying(80) | no |  |  |
+| `latitud` | double precision | sí |  |  |
+| `longitud` | double precision | sí |  |  |
+
+Restricciones:
+
+- **PK** `dim_ubicacion_pkey`: `PRIMARY KEY (sk_ubicacion)`
+- **UNIQUE** `dim_ubicacion_departamento_ciudad_key`: `UNIQUE (departamento, ciudad)`
+
+### `dw.dim_usuario`
+
+Participantes sin datos personales (Ley 1581): solo identificador y rol.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_usuario` | integer | no | nextval('dw.dim_usuario_sk_usuario_seq'::regclass) |  |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_usuario` | bigint | sí |  |  |
+| `rol` | character varying(20) | no |  |  |
+
+Restricciones:
+
+- **PK** `dim_usuario_pkey`: `PRIMARY KEY (sk_usuario)`
+- **UNIQUE** `dim_usuario_origen_dato_id_usuario_key`: `UNIQUE (origen_dato, id_usuario)`
+
+### `dw.dim_estado`
+
+Estados del ciclo de vida de cada entidad (D-03). -1 = sin estado.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_estado` | smallint | no |  |  |
+| `entidad` | character varying(20) | no |  |  |
+| `estado` | character varying(30) | no |  |  |
+| `es_final` | boolean | no |  |  |
+
+Restricciones:
+
+- **PK** `dim_estado_pkey`: `PRIMARY KEY (sk_estado)`
+- **UNIQUE** `dim_estado_entidad_estado_key`: `UNIQUE (entidad, estado)`
+
+### `dw.fact_donacion`
+
+Granularidad: una fila por donación (instantánea acumulada: el estado se actualiza en cada carga).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_donacion` | bigint | no | nextval('dw.fact_donacion_sk_donacion_seq'::regclass) |  |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_donacion` | bigint | no |  |  |
+| `sk_tiempo_publicacion` | integer | no |  |  |
+| `sk_tiempo_vencimiento` | integer | no |  |  |
+| `sk_categoria` | integer | no |  |  |
+| `sk_ubicacion` | integer | no |  |  |
+| `sk_donante` | integer | no |  |  |
+| `sk_estado` | smallint | no |  |  |
+| `cantidad` | numeric(12,2) | no |  |  |
+| `unidad_medida` | character varying(30) | no |  |  |
+| `horas_vida` | numeric(10,2) | sí |  |  |
+| `fecha_publicacion` | timestamp with time zone | no |  |  |
+| `fecha_vencimiento` | timestamp with time zone | sí |  |  |
+| `fecha_actualizacion` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **CHECK** `fact_donacion_cantidad_check`: `CHECK ((cantidad > (0)::numeric))`
+- **CHECK** `fact_donacion_origen_dato_check`: `CHECK (((origen_dato)::text = ANY ((ARRAY['REAL'::character varying, 'SINTETICO'::character varying])::text[])))`
+- **FK** `fact_donacion_sk_categoria_fkey`: `FOREIGN KEY (sk_categoria) REFERENCES dw.dim_categoria(sk_categoria)`
+- **FK** `fact_donacion_sk_donante_fkey`: `FOREIGN KEY (sk_donante) REFERENCES dw.dim_usuario(sk_usuario)`
+- **FK** `fact_donacion_sk_estado_fkey`: `FOREIGN KEY (sk_estado) REFERENCES dw.dim_estado(sk_estado)`
+- **FK** `fact_donacion_sk_tiempo_publicacion_fkey`: `FOREIGN KEY (sk_tiempo_publicacion) REFERENCES dw.dim_tiempo(sk_tiempo)`
+- **FK** `fact_donacion_sk_tiempo_vencimiento_fkey`: `FOREIGN KEY (sk_tiempo_vencimiento) REFERENCES dw.dim_tiempo(sk_tiempo)`
+- **FK** `fact_donacion_sk_ubicacion_fkey`: `FOREIGN KEY (sk_ubicacion) REFERENCES dw.dim_ubicacion(sk_ubicacion)`
+- **PK** `fact_donacion_pkey`: `PRIMARY KEY (sk_donacion)`
+- **UNIQUE** `fact_donacion_origen_dato_id_donacion_key`: `UNIQUE (origen_dato, id_donacion)`
+
+Índices:
+
+- `ix_fact_donacion_tiempo`: `btree (sk_tiempo_publicacion)`
+- `ix_fact_donacion_ubicacion`: `btree (sk_ubicacion, sk_categoria)`
+
+### `dw.fact_reserva`
+
+Granularidad: una fila por reserva, con el estado vigente.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_reserva` | bigint | no | nextval('dw.fact_reserva_sk_reserva_seq'::regclass) |  |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_reserva` | bigint | no |  |  |
+| `id_donacion` | bigint | no |  |  |
+| `sk_tiempo_reserva` | integer | no |  |  |
+| `sk_categoria` | integer | no |  |  |
+| `sk_ubicacion` | integer | no |  |  |
+| `sk_donante` | integer | no |  |  |
+| `sk_receptor` | integer | no |  |  |
+| `sk_estado` | smallint | no |  |  |
+| `fecha_reserva` | timestamp with time zone | no |  |  |
+| `fecha_expiracion` | timestamp with time zone | no |  |  |
+| `fecha_actualizacion` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **CHECK** `fact_reserva_origen_dato_check`: `CHECK (((origen_dato)::text = ANY ((ARRAY['REAL'::character varying, 'SINTETICO'::character varying])::text[])))`
+- **FK** `fact_reserva_sk_categoria_fkey`: `FOREIGN KEY (sk_categoria) REFERENCES dw.dim_categoria(sk_categoria)`
+- **FK** `fact_reserva_sk_donante_fkey`: `FOREIGN KEY (sk_donante) REFERENCES dw.dim_usuario(sk_usuario)`
+- **FK** `fact_reserva_sk_estado_fkey`: `FOREIGN KEY (sk_estado) REFERENCES dw.dim_estado(sk_estado)`
+- **FK** `fact_reserva_sk_receptor_fkey`: `FOREIGN KEY (sk_receptor) REFERENCES dw.dim_usuario(sk_usuario)`
+- **FK** `fact_reserva_sk_tiempo_reserva_fkey`: `FOREIGN KEY (sk_tiempo_reserva) REFERENCES dw.dim_tiempo(sk_tiempo)`
+- **FK** `fact_reserva_sk_ubicacion_fkey`: `FOREIGN KEY (sk_ubicacion) REFERENCES dw.dim_ubicacion(sk_ubicacion)`
+- **PK** `fact_reserva_pkey`: `PRIMARY KEY (sk_reserva)`
+- **UNIQUE** `fact_reserva_origen_dato_id_reserva_key`: `UNIQUE (origen_dato, id_reserva)`
+
+Índices:
+
+- `ix_fact_reserva_donacion`: `btree (origen_dato, id_donacion)`
+- `ix_fact_reserva_tiempo`: `btree (sk_tiempo_reserva)`
+
+### `dw.fact_entrega`
+
+Granularidad: una fila por entrega; la cantidad es la de la donación entregada (D-05: la reserva cubre la donación completa).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `sk_entrega` | bigint | no | nextval('dw.fact_entrega_sk_entrega_seq'::regclass) |  |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_entrega` | bigint | no |  |  |
+| `id_reserva` | bigint | no |  |  |
+| `id_donacion` | bigint | no |  |  |
+| `sk_tiempo_programada` | integer | no |  |  |
+| `sk_tiempo_entrega` | integer | no |  |  |
+| `sk_categoria` | integer | no |  |  |
+| `sk_ubicacion` | integer | no |  |  |
+| `sk_donante` | integer | no |  |  |
+| `sk_receptor` | integer | no |  |  |
+| `sk_estado` | smallint | no |  |  |
+| `cantidad` | numeric(12,2) | no |  |  |
+| `unidad_medida` | character varying(30) | no |  |  |
+| `horas_publicacion_a_entrega` | numeric(10,2) | sí |  |  |
+| `con_incidencia` | boolean | no | false |  |
+| `fecha_entrega` | timestamp with time zone | sí |  |  |
+| `fecha_actualizacion` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **CHECK** `fact_entrega_cantidad_check`: `CHECK ((cantidad > (0)::numeric))`
+- **CHECK** `fact_entrega_origen_dato_check`: `CHECK (((origen_dato)::text = ANY ((ARRAY['REAL'::character varying, 'SINTETICO'::character varying])::text[])))`
+- **FK** `fact_entrega_sk_categoria_fkey`: `FOREIGN KEY (sk_categoria) REFERENCES dw.dim_categoria(sk_categoria)`
+- **FK** `fact_entrega_sk_donante_fkey`: `FOREIGN KEY (sk_donante) REFERENCES dw.dim_usuario(sk_usuario)`
+- **FK** `fact_entrega_sk_estado_fkey`: `FOREIGN KEY (sk_estado) REFERENCES dw.dim_estado(sk_estado)`
+- **FK** `fact_entrega_sk_receptor_fkey`: `FOREIGN KEY (sk_receptor) REFERENCES dw.dim_usuario(sk_usuario)`
+- **FK** `fact_entrega_sk_tiempo_entrega_fkey`: `FOREIGN KEY (sk_tiempo_entrega) REFERENCES dw.dim_tiempo(sk_tiempo)`
+- **FK** `fact_entrega_sk_tiempo_programada_fkey`: `FOREIGN KEY (sk_tiempo_programada) REFERENCES dw.dim_tiempo(sk_tiempo)`
+- **FK** `fact_entrega_sk_ubicacion_fkey`: `FOREIGN KEY (sk_ubicacion) REFERENCES dw.dim_ubicacion(sk_ubicacion)`
+- **PK** `fact_entrega_pkey`: `PRIMARY KEY (sk_entrega)`
+- **UNIQUE** `fact_entrega_origen_dato_id_entrega_key`: `UNIQUE (origen_dato, id_entrega)`
+
+Índices:
+
+- `ix_fact_entrega_reserva`: `btree (origen_dato, id_reserva)`
+- `ix_fact_entrega_tiempo`: `btree (sk_tiempo_entrega)`
+
+### `dw.fact_cambio_estado`
+
+Granularidad: un evento (cambio de estado u operación) tal como lo publicó un servicio. Carga continua (S7-05).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_evento` | uuid | no |  |  |
+| `sk_tiempo` | integer | no |  |  |
+| `fecha` | timestamp with time zone | no |  |  |
+| `tipo` | character varying(60) | no |  |  |
+| `entidad` | character varying(40) | no |  |  |
+| `id_entidad` | bigint | no |  |  |
+| `sk_estado_anterior` | smallint | no |  |  |
+| `sk_estado_nuevo` | smallint | no |  |  |
+| `sk_actor` | integer | no |  |  |
+| `servicio_origen` | character varying(40) | sí |  |  |
+| `id_correlacion` | character varying(64) | sí |  |  |
+
+Restricciones:
+
+- **FK** `fact_cambio_estado_sk_actor_fkey`: `FOREIGN KEY (sk_actor) REFERENCES dw.dim_usuario(sk_usuario)`
+- **FK** `fact_cambio_estado_sk_estado_anterior_fkey`: `FOREIGN KEY (sk_estado_anterior) REFERENCES dw.dim_estado(sk_estado)`
+- **FK** `fact_cambio_estado_sk_estado_nuevo_fkey`: `FOREIGN KEY (sk_estado_nuevo) REFERENCES dw.dim_estado(sk_estado)`
+- **FK** `fact_cambio_estado_sk_tiempo_fkey`: `FOREIGN KEY (sk_tiempo) REFERENCES dw.dim_tiempo(sk_tiempo)`
+- **PK** `fact_cambio_estado_pkey`: `PRIMARY KEY (id_evento)`
+
+Índices:
+
+- `ix_fact_cambio_entidad`: `btree (entidad, id_entidad, fecha)`
+
+### `stg.usuario`
+
+
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_usuario` | bigint | no |  |  |
+| `rol` | character varying(20) | no |  |  |
+| `estado_verificacion` | character varying(20) | sí |  |  |
+| `fecha_carga` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **PK** `usuario_pkey`: `PRIMARY KEY (origen_dato, id_usuario)`
+
+### `stg.categoria`
+
+
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_categoria` | integer | no |  |  |
+| `nombre_categoria` | character varying(60) | no |  |  |
+| `fecha_carga` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **PK** `categoria_pkey`: `PRIMARY KEY (id_categoria)`
+
+### `stg.donacion`
+
+
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_donacion` | bigint | no |  |  |
+| `id_donante` | bigint | no |  |  |
+| `id_categoria` | integer | sí |  |  |
+| `cantidad` | numeric(12,2) | sí |  |  |
+| `unidad_medida` | character varying(30) | sí |  |  |
+| `fecha_publicacion` | timestamp with time zone | sí |  |  |
+| `fecha_vencimiento` | timestamp with time zone | sí |  |  |
+| `estado_donacion` | character varying(20) | sí |  |  |
+| `ciudad` | character varying(80) | sí |  |  |
+| `departamento` | character varying(80) | sí |  |  |
+| `latitud` | double precision | sí |  |  |
+| `longitud` | double precision | sí |  |  |
+| `fecha_carga` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **PK** `donacion_pkey`: `PRIMARY KEY (origen_dato, id_donacion)`
+
+### `stg.reserva`
+
+
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_reserva` | bigint | no |  |  |
+| `id_donacion` | bigint | no |  |  |
+| `id_receptor` | bigint | no |  |  |
+| `fecha_reserva` | timestamp with time zone | sí |  |  |
+| `fecha_expiracion` | timestamp with time zone | sí |  |  |
+| `estado_reserva` | character varying(20) | sí |  |  |
+| `fecha_carga` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **PK** `reserva_pkey`: `PRIMARY KEY (origen_dato, id_reserva)`
+
+### `stg.entrega`
+
+
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `origen_dato` | character varying(10) | no |  |  |
+| `id_entrega` | bigint | no |  |  |
+| `id_reserva` | bigint | no |  |  |
+| `fecha_programada` | timestamp with time zone | sí |  |  |
+| `fecha_entrega` | timestamp with time zone | sí |  |  |
+| `estado_entrega` | character varying(20) | sí |  |  |
+| `con_incidencia` | boolean | no | false |  |
+| `fecha_carga` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **PK** `entrega_pkey`: `PRIMARY KEY (origen_dato, id_entrega)`
+
+### `stg.evento`
+
+Eventos crudos copiados del historial de analytics (carga continua, S7-05).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_evento` | uuid | no |  |  |
+| `tipo` | character varying(60) | no |  |  |
+| `version` | smallint | sí |  |  |
+| `origen` | character varying(40) | sí |  |  |
+| `fecha` | timestamp with time zone | no |  |  |
+| `id_actor` | bigint | sí |  |  |
+| `entidad` | character varying(40) | no |  |  |
+| `id_entidad` | bigint | no |  |  |
+| `estado_anterior` | character varying(40) | sí |  |  |
+| `estado_nuevo` | character varying(40) | sí |  |  |
+| `datos` | jsonb | no | '{}'::jsonb |  |
+| `id_correlacion` | character varying(64) | sí |  |  |
+| `fecha_recepcion` | timestamp with time zone | no |  |  |
+| `fecha_carga` | timestamp with time zone | no | now() |  |
+| `transformado` | boolean | no | false |  |
+
+Restricciones:
+
+- **PK** `evento_pkey`: `PRIMARY KEY (id_evento)`
+
+Índices:
+
+- `ix_stg_evento_pendiente`: `btree (fecha) WHERE (NOT transformado)`
+
+### `etl.ejecucion`
+
+Registro de cada carga (S7-07): cuándo corrió, cuánto cargó y si falló.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_ejecucion` | bigint | no | nextval('etl.ejecucion_id_ejecucion_seq'::regclass) |  |
+| `tipo` | character varying(30) | no |  |  |
+| `intento` | smallint | no | 1 |  |
+| `inicio` | timestamp with time zone | no | now() |  |
+| `fin` | timestamp with time zone | sí |  |  |
+| `estado` | character varying(12) | no | 'EN_CURSO'::character varying |  |
+| `filas` | jsonb | no | '{}'::jsonb |  |
+| `error` | text | sí |  |  |
+
+Restricciones:
+
+- **CHECK** `ejecucion_estado_check`: `CHECK (((estado)::text = ANY ((ARRAY['EN_CURSO'::character varying, 'EXITOSA'::character varying, 'FALLIDA'::character varying])::text[])))`
+- **PK** `ejecucion_pkey`: `PRIMARY KEY (id_ejecucion)`
+
+### `etl.marca_agua`
+
+Hasta dónde se leyó cada fuente incremental (eventos por fecha de recepción).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `fuente` | character varying(40) | no |  |  |
+| `valor` | timestamp with time zone | no |  |  |
+
+Restricciones:
+
+- **PK** `marca_agua_pkey`: `PRIMARY KEY (fuente)`
+
+### `etl.resultado_calidad`
+
+Informe de calidad generado en cada carga (S7-06).
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_resultado` | bigint | no | nextval('etl.resultado_calidad_id_resultado_seq'::regclass) |  |
+| `id_ejecucion` | bigint | no |  |  |
+| `regla` | character varying(60) | no |  |  |
+| `descripcion` | text | no |  |  |
+| `filas_con_problema` | bigint | no |  |  |
+| `aprobada` | boolean | no |  |  |
+| `fecha` | timestamp with time zone | no | now() |  |
+
+Restricciones:
+
+- **FK** `resultado_calidad_id_ejecucion_fkey`: `FOREIGN KEY (id_ejecucion) REFERENCES etl.ejecucion(id_ejecucion)`
+- **PK** `resultado_calidad_pkey`: `PRIMARY KEY (id_resultado)`

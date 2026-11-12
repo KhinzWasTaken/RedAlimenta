@@ -21,7 +21,9 @@ SERVICIOS = [  # (nombre, carpeta, paquete)
     ("fulfillment", "fulfillment-service", "cumplimiento"),
     ("notification", "notification-service", "notificaciones"),
     ("analytics", "analytics-service", "analitica"),
+    ("dwh", "../dwh", "almacen"),  # almacén de datos (Sprint 7); no es un servicio pero se migra igual
 ]
+FUENTES_DWH = ("identity", "catalog", "fulfillment", "analytics")  # bases que el ETL lee (solo lectura)
 for _, carpeta, _ in SERVICIOS:
     sys.path.insert(0, str(RAIZ / "services" / carpeta))
 
@@ -84,13 +86,31 @@ def preparar() -> None:
                 c.execute(text(f"CREATE DATABASE {base}"))
                 c.execute(text(f"REVOKE ALL ON DATABASE {base} FROM PUBLIC"))
                 c.execute(text(f"GRANT CONNECT, TEMPORARY ON DATABASE {base} TO {rol}"))
+        # Rol de solo lectura del ETL (S7-04): puede conectarse a las bases fuente y solo hacer SELECT
+        clave = env["APP_DB_PASSWORD"].replace("'", "''")
+        if not c.scalar(text("SELECT 1 FROM pg_roles WHERE rolname = 'dwh_lector'")):
+            c.execute(text(f"CREATE ROLE dwh_lector LOGIN PASSWORD '{clave}'"))
+        for nombre in FUENTES_DWH:
+            c.execute(text(f"GRANT CONNECT ON DATABASE redalimenta_{nombre} TO dwh_lector"))
     admin.dispose()
+
+
+def permisos_lectura_dwh() -> None:
+    """Tras migrar: dwh_lector puede leer (y solo leer) las tablas de las bases fuente."""
+    for nombre in FUENTES_DWH:
+        motor = create_engine(url(nombre))
+        with motor.begin() as c:
+            if c.scalar(text("SELECT 1 FROM pg_roles WHERE rolname = 'dwh_lector'")):
+                c.execute(text("GRANT USAGE ON SCHEMA public TO dwh_lector; "
+                               "GRANT SELECT ON ALL TABLES IN SCHEMA public TO dwh_lector"))
+        motor.dispose()
 
 
 def migrar() -> None:
     for nombre, carpeta, _ in SERVICIOS:
         print(f"» Migrando {nombre}…")
         command.upgrade(_cfg(nombre, carpeta), "head")
+    permisos_lectura_dwh()
 
 
 def revertir() -> None:

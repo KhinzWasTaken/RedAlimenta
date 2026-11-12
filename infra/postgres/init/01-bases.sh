@@ -18,6 +18,15 @@ crear redalimenta_catalog      catalog_app
 crear redalimenta_fulfillment  fulfillment_app
 crear redalimenta_notification notification_app
 crear redalimenta_analytics    analytics_app
+crear redalimenta_dwh          dwh_app
+
+# Rol de solo lectura del ETL del almacén (S7-04): se conecta a las bases fuente y solo puede hacer SELECT
+# (los permisos sobre las tablas los da scripts/bd.py después de migrar)
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<SQL
+CREATE ROLE dwh_lector LOGIN PASSWORD '${APP_DB_PASSWORD}';
+GRANT CONNECT ON DATABASE redalimenta_identity, redalimenta_catalog, redalimenta_fulfillment,
+                          redalimenta_analytics TO dwh_lector;
+SQL
 
 # PostGIS solo en la base del catálogo (las demás no manejan geografía)
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname redalimenta_catalog \

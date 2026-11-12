@@ -14,8 +14,26 @@ Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 | 4 | Base transaccional: DDL, DML, CRUD, OLTP | ✅ Listo |
 | 5 | Aplicación: API REST por servicio, eventos, frontend | ✅ Listo |
 | 6 | Docker, gateway, Kubernetes | ✅ Listo (Kubernetes validado sin clúster; ver abajo) |
-| 7 | Almacén de datos y ETL | Pendiente |
+| 7 | Almacén de datos y ETL | ✅ Listo |
 | 8 | Indicadores, tablero y documentación final | Pendiente |
+
+### Almacén de datos (Sprint 7)
+
+Base `redalimenta_dwh` con modelo en estrella (`docs/dwh/modelo-dimensional.md`). En Docker Compose el
+servicio `etl` hace la carga completa al arrancar (50.000 donaciones sintéticas + bases transaccionales +
+eventos) y la carga continua cada 5 minutos. A mano, con el sistema levantado:
+
+| Comando | Qué hace |
+| --- | --- |
+| `python scripts/etl.py cargar completa` | Sintéticos + carga histórica + eventos (primera vez) |
+| `python scripts/etl.py cargar historica` | Copia fresca de las bases transaccionales, con un rol de solo lectura |
+| `python scripts/etl.py cargar eventos` | Carga continua desde el historial de eventos (incremental) |
+| `python scripts/etl.py indicadores` | Indicadores del RF9 por año, volumen y cobertura |
+| `python scripts/etl.py informe` | Escribe `docs/dwh/informe-calidad.md` con las reglas de calidad de la última carga |
+
+Cada carga queda en `etl.ejecucion`, se reintenta si falla y termina con 12 reglas de calidad
+(`etl.resultado_calidad`). En Kubernetes: Job de carga inicial y CronJob de eventos (cada 10 min) e
+histórico (cada noche) en `infra/k8s/etl.yaml`. Bases distribuidas: `docs/arquitectura/bases-distribuidas.md`.
 
 ### Sistema completo en Docker (Sprint 6)
 

@@ -1,5 +1,5 @@
-# Imagen de herramientas: aplica las migraciones de las cinco bases y carga los datos semilla.
-# En Compose corre una vez antes de los servicios; en Kubernetes es un Job.
+# Imagen de herramientas: migraciones de las seis bases, datos semilla y ETL del almacén (Sprint 7).
+# En Compose corre una vez antes de los servicios; en Kubernetes es un Job (y los CronJob del ETL).
 #   docker build -f infra/herramientas/Dockerfile -t redalimenta/herramientas .
 FROM python:3.12-slim
 
@@ -11,6 +11,7 @@ COPY services/comun /app/services/comun
 RUN pip install /app/services/comun "SQLAlchemy>=2.0" "alembic>=1.13" "psycopg[binary]>=3.2" "GeoAlchemy2>=0.15"
 COPY services /app/services
 COPY scripts /app/scripts
+COPY dwh /app/dwh
 COPY infra/rutas.json /app/infra/rutas.json
 
 USER app

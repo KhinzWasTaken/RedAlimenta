@@ -11,41 +11,45 @@ from sqlalchemy import create_engine, text
 SERVICIO_DE_BASE = {
     "identity": "identity-service", "catalog": "catalog-geo-service",
     "fulfillment": "fulfillment-service", "notification": "notification-service",
-    "analytics": "analytics-service",
+    "analytics": "analytics-service", "dwh": "almacén de datos",
 }
 EXCLUIDAS = ("alembic_version", "spatial_ref_sys")
 
 SQL_TABLAS = """
-SELECT c.relname, obj_description(c.oid, 'pg_class')
+SELECT CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END, obj_description(c.oid, 'pg_class')
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname NOT IN :excluidas
+WHERE n.nspname IN ('public', 'stg', 'dw', 'etl') AND c.relkind = 'r' AND c.relname NOT IN :excluidas
 ORDER BY c.oid
 """
 SQL_COLUMNAS = """
-SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod), NOT a.attnotnull,
+SELECT CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END,
+       a.attname, format_type(a.atttypid, a.atttypmod), NOT a.attnotnull,
        pg_get_expr(d.adbin, d.adrelid), col_description(c.oid, a.attnum)
 FROM pg_attribute a
 JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
 LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
-WHERE n.nspname = 'public' AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
+WHERE n.nspname IN ('public', 'stg', 'dw', 'etl') AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
   AND c.relname NOT IN :excluidas
 ORDER BY c.relname, a.attnum
 """
 SQL_RESTRICCIONES = """
-SELECT c.relname, con.conname, con.contype, pg_get_constraintdef(con.oid)
+SELECT CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END,
+       con.conname, con.contype, pg_get_constraintdef(con.oid)
 FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public' AND c.relname NOT IN :excluidas
+WHERE n.nspname IN ('public', 'stg', 'dw', 'etl') AND c.relname NOT IN :excluidas
 ORDER BY c.relname, con.contype, con.conname
 """
 SQL_INDICES = """
-SELECT tablename, indexname, indexdef FROM pg_indexes
-WHERE schemaname = 'public' AND tablename NOT IN :excluidas
+SELECT CASE WHEN schemaname = 'public' THEN tablename ELSE schemaname || '.' || tablename END,
+       indexname, indexdef FROM pg_indexes
+WHERE schemaname IN ('public', 'stg', 'dw', 'etl') AND tablename NOT IN :excluidas
   AND indexname NOT IN (SELECT conname FROM pg_constraint)
 ORDER BY tablename, indexname
 """
 SQL_TRIGGERS = """
-SELECT c.relname, t.tgname, p.proname
+SELECT CASE WHEN n.nspname = 'public' THEN c.relname ELSE n.nspname || '.' || c.relname END, t.tgname, p.proname
 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_proc p ON p.oid = t.tgfoid
+JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE NOT t.tgisinternal ORDER BY c.relname, t.tgname
 """
 SQL_ENUMS = """

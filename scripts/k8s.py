@@ -66,11 +66,12 @@ def desplegar() -> None:
                    f"--from-file={RAIZ / 'infra' / 'postgres' / 'init' / '01-bases.sh'}", "--dry-run=client",
                    "-o", "yaml", capturar=True)
     kubectl("apply", "-f", "-", entrada=init)
-    kubectl("delete", "job", "migraciones", "--ignore-not-found")
+    kubectl("delete", "job", "migraciones", "etl-carga-inicial", "--ignore-not-found")
     correr("kubectl", "apply", "-k", str(RAIZ / "infra" / "k8s"))
     kubectl("rollout", "status", "statefulset/postgres", "--timeout=300s")
     kubectl("rollout", "status", "deployment/rabbitmq", "--timeout=300s")
     kubectl("wait", "--for=condition=complete", "job/migraciones", "--timeout=300s")
+    kubectl("wait", "--for=condition=complete", "job/etl-carga-inicial", "--timeout=600s")
     for nombre in (*RUTAS, "gateway"):
         kubectl("rollout", "status", f"deployment/{nombre}", "--timeout=300s")
     kubectl("get", "pods", "-o", "wide")

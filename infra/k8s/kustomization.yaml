@@ -17,3 +17,4 @@ resources:
   - servicios.yaml
   - tareas-cronjob.yaml
   - gateway.yaml
+  - etl.yaml
