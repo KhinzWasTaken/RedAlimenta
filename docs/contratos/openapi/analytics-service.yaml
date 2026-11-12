@@ -1,0 +1,148 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · analytics-service
+  description: Historial inmutable de eventos y trazabilidad (RF10). Indicadores y
+    reportes en los Sprints 7 y 8 (RF9).
+  version: 1.0.0
+paths:
+  /salud:
+    get:
+      tags:
+      - salud
+      summary: Salud
+      operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/historial/entidades/{entidad}:
+    get:
+      tags:
+      - historial
+      summary: Por Entidad
+      description: Reconstruye la vida de una donación, reserva o entrega en orden
+        cronológico.
+      operationId: por_entidad_api_historial_entidades__entidad__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: entidad
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Entidad
+      - name: id_entidad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Entidad
+      - name: tipo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tipo
+      - name: limite
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 5000
+          default: 500
+          title: Limite
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/historial/usuarios/{id_usuario}:
+    get:
+      tags:
+      - historial
+      summary: Por Usuario
+      operationId: por_usuario_api_historial_usuarios__id_usuario__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_usuario
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Usuario
+      - name: limite
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 5000
+          default: 500
+          title: Limite
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

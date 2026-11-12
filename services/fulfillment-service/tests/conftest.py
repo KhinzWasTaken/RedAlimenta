@@ -10,7 +10,7 @@ import uuid
 # API en modo prueba: eventos en memoria, sin consumidores y con secretos de prueba
 os.environ.setdefault("EVENTOS_BACKEND", "memoria")
 os.environ.setdefault("CONSUMIR_EVENTOS", "0")
-os.environ.setdefault("JWT_SECRETO", "secreto-de-pruebas")
+os.environ.setdefault("JWT_SECRETO", "secreto-de-pruebas-con-al-menos-32-bytes-de-largo")
 os.environ.setdefault("TOKEN_INTERNO", "token-interno-de-pruebas")
 os.environ.setdefault("MODO_DEMO", "1")
 from pathlib import Path

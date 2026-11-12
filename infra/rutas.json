@@ -1,0 +1,25 @@
+{
+  "_descripcion": "Qué servicio atiende cada prefijo de /api. La usan el proxy de Vite (desarrollo), scripts/levantar.py y el gateway del Sprint 6. Las rutas /internal no se publican nunca.",
+  "servicios": {
+    "identity": {
+      "carpeta": "identity-service", "paquete": "identidad", "puerto": 8001,
+      "prefijos": ["/api/auth", "/api/usuarios", "/api/admin/usuarios", "/api/admin/verificaciones", "/api/admin/auditoria"]
+    },
+    "catalog": {
+      "carpeta": "catalog-geo-service", "paquete": "catalogo", "puerto": 8002,
+      "prefijos": ["/api/categorias", "/api/admin/categorias", "/api/donaciones", "/api/necesidades"]
+    },
+    "fulfillment": {
+      "carpeta": "fulfillment-service", "paquete": "cumplimiento", "puerto": 8003,
+      "prefijos": ["/api/reservas", "/api/entregas", "/api/tareas"]
+    },
+    "notification": {
+      "carpeta": "notification-service", "paquete": "notificaciones", "puerto": 8004,
+      "prefijos": ["/api/notificaciones"]
+    },
+    "analytics": {
+      "carpeta": "analytics-service", "paquete": "analitica", "puerto": 8005,
+      "prefijos": ["/api/historial"]
+    }
+  }
+}

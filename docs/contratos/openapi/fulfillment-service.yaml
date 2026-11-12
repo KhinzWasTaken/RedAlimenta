@@ -1,0 +1,300 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · fulfillment-service
+  description: Reservas con control de concurrencia, entregas con confirmación bilateral
+    y tareas automáticas (RF5, RF6, RF8).
+  version: 1.0.0
+paths:
+  /salud:
+    get:
+      tags:
+      - salud
+      summary: Salud
+      operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/reservas:
+    post:
+      tags:
+      - reservas
+      summary: Reservar
+      description: 'D-02: con dos solicitudes simultáneas, una recibe 201 y la otra
+        409.'
+      operationId: reservar_api_reservas_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaReserva'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/reservas/mias:
+    get:
+      tags:
+      - reservas
+      summary: Mis Reservas
+      operationId: mis_reservas_api_reservas_mias_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/reservas/{id_reserva}:
+    get:
+      tags:
+      - reservas
+      summary: Ver Reserva
+      operationId: ver_reserva_api_reservas__id_reserva__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_reserva
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Reserva
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/reservas/{id_reserva}/confirmar:
+    post:
+      tags:
+      - reservas
+      summary: Confirmar
+      operationId: confirmar_api_reservas__id_reserva__confirmar_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_reserva
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Reserva
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/reservas/{id_reserva}/cancelar:
+    post:
+      tags:
+      - reservas
+      summary: Cancelar
+      operationId: cancelar_api_reservas__id_reserva__cancelar_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_reserva
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Reserva
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/reservas/{id_reserva}/forzar-expiracion:
+    post:
+      tags:
+      - demostración
+      summary: Forzar Expiracion
+      description: 'Solo con MODO_DEMO=1: adelanta el plazo de una reserva PENDIENTE
+        y la expira (D-09).'
+      operationId: forzar_expiracion_api_reservas__id_reserva__forzar_expiracion_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_reserva
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Reserva
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/entregas/mias:
+    get:
+      tags:
+      - entregas
+      summary: Mis Entregas
+      operationId: mis_entregas_api_entregas_mias_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/entregas/{id_entrega}/confirmar:
+    post:
+      tags:
+      - entregas
+      summary: Confirmar Entrega
+      description: 'RF6: la donación queda ENTREGADA solo con la confirmación del
+        donante y la del receptor.'
+      operationId: confirmar_entrega_api_entregas__id_entrega__confirmar_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_entrega
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Entrega
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Confirmacion'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/tareas/ejecutar:
+    post:
+      tags:
+      - tareas
+      summary: Ejecutar Tareas
+      description: 'Ejecuta ahora las tareas automáticas (RF8): idempotente.'
+      operationId: ejecutar_tareas_api_tareas_ejecutar_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+components:
+  schemas:
+    Confirmacion:
+      properties:
+        estado_confirmacion:
+          type: string
+          title: Estado Confirmacion
+          description: CONFIRMADA o CON_INCIDENCIA
+          default: CONFIRMADA
+        observaciones:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Observaciones
+      type: object
+      title: Confirmacion
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    NuevaReserva:
+      properties:
+        id_donacion:
+          type: integer
+          title: Id Donacion
+      type: object
+      required:
+      - id_donacion
+      title: NuevaReserva
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

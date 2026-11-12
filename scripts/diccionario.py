@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, text
 SERVICIO_DE_BASE = {
     "identity": "identity-service", "catalog": "catalog-geo-service",
     "fulfillment": "fulfillment-service", "notification": "notification-service",
+    "analytics": "analytics-service",
 }
 EXCLUIDAS = ("alembic_version", "spatial_ref_sys")
 

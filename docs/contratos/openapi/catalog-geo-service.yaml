@@ -1,0 +1,690 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · catalog-geo-service
+  description: Donaciones, necesidades, búsqueda geoespacial con prioridad (RF2, RF3,
+    RF4) y transiciones de estado de la donación para otros servicios (D-01).
+  version: 1.0.0
+paths:
+  /salud:
+    get:
+      tags:
+      - salud
+      summary: Salud
+      operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/categorias:
+    get:
+      tags:
+      - categorías
+      summary: Categorias
+      operationId: categorias_api_categorias_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/admin/categorias:
+    post:
+      tags:
+      - categorías
+      summary: Crear Categoria
+      operationId: crear_categoria_api_admin_categorias_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Categoria'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/admin/categorias/{id_categoria}:
+    patch:
+      tags:
+      - categorías
+      summary: Editar Categoria
+      operationId: editar_categoria_api_admin_categorias__id_categoria__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_categoria
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Categoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Categoria'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/donaciones:
+    post:
+      tags:
+      - donaciones
+      summary: Publicar
+      operationId: publicar_api_donaciones_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaDonacion'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/donaciones/mias:
+    get:
+      tags:
+      - donaciones
+      summary: Mis Donaciones
+      operationId: mis_donaciones_api_donaciones_mias_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/donaciones/disponibles:
+    get:
+      tags:
+      - búsqueda
+      summary: Disponibles
+      description: 'RF4: disponibles y vigentes cerca de un punto (D-07), con distancia
+        y puntaje (D-08), listas para el mapa.'
+      operationId: disponibles_api_donaciones_disponibles_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: lat
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 90
+            minimum: -90
+          - type: 'null'
+          title: Lat
+      - name: lon
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 180
+            minimum: -180
+          - type: 'null'
+          title: Lon
+      - name: id_necesidad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Necesidad
+      - name: id_categoria
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+      - name: radio_km
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 200
+            exclusiveMinimum: 0
+          - type: 'null'
+          title: Radio Km
+      - name: cantidad_minima
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Cantidad Minima
+      - name: vence_antes
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Vence Antes
+      - name: orden
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(prioridad|distancia)$
+          default: prioridad
+          title: Orden
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/donaciones/{id_donacion}:
+    get:
+      tags:
+      - donaciones
+      summary: Ver Donacion
+      operationId: ver_donacion_api_donaciones__id_donacion__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_donacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Donacion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - donaciones
+      summary: Modificar
+      operationId: modificar_api_donaciones__id_donacion__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_donacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Donacion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiosDonacion'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/donaciones/{id_donacion}/cancelar:
+    post:
+      tags:
+      - donaciones
+      summary: Cancelar
+      operationId: cancelar_api_donaciones__id_donacion__cancelar_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_donacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Donacion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/necesidades/mias:
+    get:
+      tags:
+      - necesidades
+      summary: Mis Necesidades
+      operationId: mis_necesidades_api_necesidades_mias_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/necesidades:
+    post:
+      tags:
+      - necesidades
+      summary: Registrar Necesidad
+      operationId: registrar_necesidad_api_necesidades_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaNecesidad'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/necesidades/{id_necesidad}:
+    patch:
+      tags:
+      - necesidades
+      summary: Ajustar
+      operationId: ajustar_api_necesidades__id_necesidad__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_necesidad
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Necesidad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiosNecesidad'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/necesidades/{id_necesidad}/{accion}:
+    post:
+      tags:
+      - necesidades
+      summary: Cerrar
+      operationId: cerrar_api_necesidades__id_necesidad___accion__post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_necesidad
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Necesidad
+      - name: accion
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Accion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    CambiosDonacion:
+      properties:
+        nombre_alimento:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Nombre Alimento
+        id_categoria:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+        cantidad:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Cantidad
+        unidad_medida:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Unidad Medida
+        fecha_vencimiento:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Vencimiento
+        descripcion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Descripcion
+        condiciones_recogida:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Condiciones Recogida
+      type: object
+      title: CambiosDonacion
+    CambiosNecesidad:
+      properties:
+        descripcion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Descripcion
+        cantidad_requerida:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Cantidad Requerida
+        unidad_medida:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unidad Medida
+        nivel_urgencia:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nivel Urgencia
+        fecha_limite:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Limite
+      type: object
+      title: CambiosNecesidad
+    Categoria:
+      properties:
+        nombre_categoria:
+          type: string
+          maxLength: 60
+          minLength: 2
+          title: Nombre Categoria
+        descripcion:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Descripcion
+      type: object
+      required:
+      - nombre_categoria
+      title: Categoria
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    NuevaDonacion:
+      properties:
+        nombre_alimento:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Nombre Alimento
+        id_categoria:
+          type: integer
+          title: Id Categoria
+        cantidad:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Cantidad
+        unidad_medida:
+          type: string
+          maxLength: 30
+          minLength: 1
+          title: Unidad Medida
+        fecha_vencimiento:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Vencimiento
+          description: Con zona horaria; NULL si no aplica
+        descripcion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Descripcion
+        condiciones_recogida:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Condiciones Recogida
+        ubicacion:
+          $ref: '#/components/schemas/Ubicacion'
+      type: object
+      required:
+      - nombre_alimento
+      - id_categoria
+      - cantidad
+      - unidad_medida
+      - ubicacion
+      title: NuevaDonacion
+    NuevaNecesidad:
+      properties:
+        descripcion:
+          type: string
+          minLength: 2
+          title: Descripcion
+        id_categoria:
+          type: integer
+          title: Id Categoria
+        cantidad_requerida:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Cantidad Requerida
+        unidad_medida:
+          type: string
+          maxLength: 30
+          minLength: 1
+          title: Unidad Medida
+        nivel_urgencia:
+          type: string
+          title: Nivel Urgencia
+          description: BAJA, MEDIA, ALTA o CRITICA
+        fecha_limite:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Limite
+        ubicacion:
+          $ref: '#/components/schemas/Ubicacion'
+      type: object
+      required:
+      - descripcion
+      - id_categoria
+      - cantidad_requerida
+      - unidad_medida
+      - nivel_urgencia
+      - ubicacion
+      title: NuevaNecesidad
+    Transicion:
+      properties:
+        estado:
+          type: string
+          title: Estado
+        id_actor:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Actor
+        datos:
+          additionalProperties: true
+          type: object
+          title: Datos
+          description: Contexto que viaja en el evento (p. ej. id_receptor)
+      type: object
+      required:
+      - estado
+      title: Transicion
+    Ubicacion:
+      properties:
+        lat:
+          type: number
+          maximum: 90.0
+          minimum: -90.0
+          title: Lat
+        lon:
+          type: number
+          maximum: 180.0
+          minimum: -180.0
+          title: Lon
+        direccion_referencia:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Direccion Referencia
+        ciudad:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Ciudad
+        departamento:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Departamento
+      type: object
+      required:
+      - lat
+      - lon
+      - ciudad
+      - departamento
+      title: Ubicacion
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

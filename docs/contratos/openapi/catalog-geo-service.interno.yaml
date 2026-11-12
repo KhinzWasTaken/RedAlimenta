@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · catalog-geo-service (interno)
+  description: Donaciones, necesidades, búsqueda geoespacial con prioridad (RF2, RF3,
+    RF4) y transiciones de estado de la donación para otros servicios (D-01).
+  version: 1.0.0
+paths:
+  /internal/donaciones:
+    get:
+      tags:
+      - interno (solo servicios)
+      summary: Donaciones Internas
+      operationId: donaciones_internas_internal_donaciones_get
+      parameters:
+      - name: ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ids
+      - name: id_donante
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Donante
+      - name: estado
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Estado
+      - name: x-token-interno
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Token-Interno
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /internal/donaciones/{id_donacion}/transiciones:
+    post:
+      tags:
+      - interno (solo servicios)
+      summary: Transicion
+      description: 'D-01: fulfillment pide cada cambio de estado; aquí se valida (409
+        si es ilegal) y se anuncia.'
+      operationId: transicion_internal_donaciones__id_donacion__transiciones_post
+      parameters:
+      - name: id_donacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Donacion
+      - name: x-token-interno
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Token-Interno
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transicion'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /internal/tareas/vencer:
+    post:
+      tags:
+      - interno (solo servicios)
+      summary: Vencer
+      description: 'RF8: la tarea programada de fulfillment pide marcar VENCIDA lo
+        que pasó su fecha.'
+      operationId: vencer_internal_tareas_vencer_post
+      parameters:
+      - name: x-token-interno
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Token-Interno
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /internal/donaciones-por-vencer:
+    get:
+      tags:
+      - interno (solo servicios)
+      summary: Por Vencer
+      operationId: por_vencer_internal_donaciones_por_vencer_get
+      parameters:
+      - name: horas
+        in: query
+        required: false
+        schema:
+          type: number
+          default: 24
+          title: Horas
+      - name: x-token-interno
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Token-Interno
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    CambiosDonacion:
+      properties:
+        nombre_alimento:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Nombre Alimento
+        id_categoria:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+        cantidad:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Cantidad
+        unidad_medida:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Unidad Medida
+        fecha_vencimiento:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Vencimiento
+        descripcion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Descripcion
+        condiciones_recogida:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Condiciones Recogida
+      type: object
+      title: CambiosDonacion
+    CambiosNecesidad:
+      properties:
+        descripcion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Descripcion
+        cantidad_requerida:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Cantidad Requerida
+        unidad_medida:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unidad Medida
+        nivel_urgencia:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nivel Urgencia
+        fecha_limite:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Limite
+      type: object
+      title: CambiosNecesidad
+    Categoria:
+      properties:
+        nombre_categoria:
+          type: string
+          maxLength: 60
+          minLength: 2
+          title: Nombre Categoria
+        descripcion:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Descripcion
+      type: object
+      required:
+      - nombre_categoria
+      title: Categoria
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    NuevaDonacion:
+      properties:
+        nombre_alimento:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Nombre Alimento
+        id_categoria:
+          type: integer
+          title: Id Categoria
+        cantidad:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Cantidad
+        unidad_medida:
+          type: string
+          maxLength: 30
+          minLength: 1
+          title: Unidad Medida
+        fecha_vencimiento:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Vencimiento
+          description: Con zona horaria; NULL si no aplica
+        descripcion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Descripcion
+        condiciones_recogida:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Condiciones Recogida
+        ubicacion:
+          $ref: '#/components/schemas/Ubicacion'
+      type: object
+      required:
+      - nombre_alimento
+      - id_categoria
+      - cantidad
+      - unidad_medida
+      - ubicacion
+      title: NuevaDonacion
+    NuevaNecesidad:
+      properties:
+        descripcion:
+          type: string
+          minLength: 2
+          title: Descripcion
+        id_categoria:
+          type: integer
+          title: Id Categoria
+        cantidad_requerida:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Cantidad Requerida
+        unidad_medida:
+          type: string
+          maxLength: 30
+          minLength: 1
+          title: Unidad Medida
+        nivel_urgencia:
+          type: string
+          title: Nivel Urgencia
+          description: BAJA, MEDIA, ALTA o CRITICA
+        fecha_limite:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Fecha Limite
+        ubicacion:
+          $ref: '#/components/schemas/Ubicacion'
+      type: object
+      required:
+      - descripcion
+      - id_categoria
+      - cantidad_requerida
+      - unidad_medida
+      - nivel_urgencia
+      - ubicacion
+      title: NuevaNecesidad
+    Transicion:
+      properties:
+        estado:
+          type: string
+          title: Estado
+        id_actor:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Actor
+        datos:
+          additionalProperties: true
+          type: object
+          title: Datos
+          description: Contexto que viaja en el evento (p. ej. id_receptor)
+      type: object
+      required:
+      - estado
+      title: Transicion
+    Ubicacion:
+      properties:
+        lat:
+          type: number
+          maximum: 90.0
+          minimum: -90.0
+          title: Lat
+        lon:
+          type: number
+          maximum: 180.0
+          minimum: -180.0
+          title: Lon
+        direccion_referencia:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Direccion Referencia
+        ciudad:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Ciudad
+        departamento:
+          type: string
+          maxLength: 80
+          minLength: 2
+          title: Departamento
+      type: object
+      required:
+      - lat
+      - lon
+      - ciudad
+      - departamento
+      title: Ubicacion
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

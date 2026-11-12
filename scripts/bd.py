@@ -1,6 +1,6 @@
 """Operaciones sobre las cuatro bases transaccionales (Sprint 4).
 
-    python scripts/bd.py migrar        aplica todas las migraciones desde cero (alembic upgrade head)
+    python scripts/bd.py migrar        crea las bases que falten y aplica las migraciones (alembic upgrade head)
     python scripts/bd.py revertir      las revierte todas (alembic downgrade base)
     python scripts/bd.py sembrar       inserta los datos semilla (solo si las tablas están vacías)
     python scripts/bd.py reiniciar     revertir + migrar + sembrar
@@ -20,6 +20,7 @@ SERVICIOS = [  # (nombre, carpeta, paquete)
     ("catalog", "catalog-geo-service", "catalogo"),
     ("fulfillment", "fulfillment-service", "cumplimiento"),
     ("notification", "notification-service", "notificaciones"),
+    ("analytics", "analytics-service", "analitica"),
 ]
 for _, carpeta, _ in SERVICIOS:
     sys.path.insert(0, str(RAIZ / "services" / carpeta))
@@ -27,7 +28,7 @@ for _, carpeta, _ in SERVICIOS:
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
-from sqlalchemy.engine import URL  # noqa: E402
+from sqlalchemy.engine import URL, make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 
@@ -60,6 +61,32 @@ def _cfg(nombre: str, carpeta: str) -> Config:
     return cfg
 
 
+def preparar() -> None:
+    """Crea las bases y roles que falten (p. ej. analytics en un volumen creado en el Sprint 4).
+
+    Solo aplica a las URLs armadas con infra/.env (servidor local de desarrollo).
+    """
+    env = _leer_env()
+    if any(os.environ.get(f"{n.upper()}_DATABASE_URL") for n, _, _ in SERVICIOS) or not env.get("APP_DB_PASSWORD"):
+        return
+    admin = create_engine(make_url(url("identity")).set(database="postgres"), isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:
+        for nombre, _, _ in SERVICIOS:
+            rol, base = f"{nombre}_app", f"redalimenta_{nombre}"
+            clave = env["APP_DB_PASSWORD"].replace("'", "''")
+            puede_entrar = c.scalar(text("SELECT rolcanlogin FROM pg_roles WHERE rolname = :r"), {"r": rol})
+            if puede_entrar is None:
+                c.execute(text(f"CREATE ROLE {rol} LOGIN PASSWORD '{clave}'"))
+            elif not puede_entrar:  # creado sin login por las pruebas
+                c.execute(text(f"ALTER ROLE {rol} LOGIN PASSWORD '{clave}'"))
+            if not c.scalar(text("SELECT 1 FROM pg_database WHERE datname = :b"), {"b": base}):
+                print(f"» Creando la base {base}…")
+                c.execute(text(f"CREATE DATABASE {base}"))
+                c.execute(text(f"REVOKE ALL ON DATABASE {base} FROM PUBLIC"))
+                c.execute(text(f"GRANT CONNECT, TEMPORARY ON DATABASE {base} TO {rol}"))
+    admin.dispose()
+
+
 def migrar() -> None:
     for nombre, carpeta, _ in SERVICIOS:
         print(f"» Migrando {nombre}…")
@@ -73,7 +100,9 @@ def revertir() -> None:
 
 
 def sembrar() -> None:
-    for nombre, _, paquete in SERVICIOS:
+    for nombre, carpeta, paquete in SERVICIOS:
+        if not (RAIZ / "services" / carpeta / paquete / "semilla.py").exists():
+            continue
         modulo = __import__(f"{paquete}.semilla", fromlist=["sembrar"])
         motor = create_engine(url(nombre))
         with Session(motor) as db:
@@ -138,6 +167,8 @@ def main(argv: list[str]) -> int:
     if not argv or argv[0] not in (*acciones, "reiniciar", "diccionario"):
         print(__doc__)
         return 2
+    if argv[0] in ("migrar", "revertir", "reiniciar"):
+        preparar()
     if argv[0] == "reiniciar":
         revertir()
         migrar()
