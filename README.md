@@ -2,7 +2,7 @@
 
 Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 
-- **Proyecto final (Sprints 4–8)**, en construcción: microservicios con PostgreSQL + PostGIS y RabbitMQ
+- **Proyecto final (Sprints 4–8)**, terminado: microservicios con PostgreSQL + PostGIS y RabbitMQ
   (`services/`, `infra/`, `scripts/`). Plan en `docs/contexto/plan-sprints-4-8.md`.
 - **Prototipo de clase** (más abajo): una sola aplicación con SQLite (`backend/`, `frontend/`).
   Queda como referencia; el sistema vigente son los servicios (`python scripts/levantar.py`).
@@ -15,7 +15,31 @@ Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 | 5 | Aplicación: API REST por servicio, eventos, frontend | ✅ Listo |
 | 6 | Docker, gateway, Kubernetes | ✅ Listo (Kubernetes validado sin clúster; ver abajo) |
 | 7 | Almacén de datos y ETL | ✅ Listo |
-| 8 | Indicadores, tablero y documentación final | Pendiente |
+| 8 | Indicadores, tablero, trazabilidad, seguridad y documentación final | ✅ Listo |
+
+### Documentación
+
+| Para | Documento |
+| --- | --- |
+| Usar la aplicación (donante, receptor, administrador) | `docs/manuales/usuario.md` |
+| Mantener y extender el sistema | `docs/manuales/tecnico.md` |
+| Desplegar en Kubernetes local | `docs/manuales/despliegue-kubernetes.md` |
+| Presentar la demostración (8 minutos, cuatro actores) | `docs/guion-demo.md` |
+| Arquitectura y bases distribuidas | `docs/arquitectura/` |
+| Modelo de datos, estados y diccionario | `docs/modelo/` |
+| Contratos de API y eventos | `docs/contratos/` |
+| Almacén de datos y calidad | `docs/dwh/` |
+| Seguridad y tratamiento de datos (Ley 1581) | `docs/seguridad/` |
+| Requerimiento → prueba | `docs/trazabilidad.md` |
+| Decisiones del equipo (D-01..D-10) | `docs/decisiones/README.md` |
+
+### Indicadores y trazabilidad (Sprint 8)
+
+El administrador tiene las pestañas **Tablero** (indicadores del RF9 sobre el almacén, filtros, mapa de
+cobertura y exportación CSV; API `/api/indicadores/*` y `/api/reportes/*.csv`) y **Trazabilidad** (historia
+completa de una donación, reserva, entrega o usuario, RF10). `python scripts/revisar_seguridad.py --bases`
+revisa controles de seguridad y `python scripts/trazabilidad.py --ejecutar` corre las 59 pruebas citadas en
+la matriz de requerimientos.
 
 ### Almacén de datos (Sprint 7)
 
