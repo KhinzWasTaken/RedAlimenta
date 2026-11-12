@@ -8,6 +8,7 @@ import time
 
 import httpx
 
+from redalimenta_comun import correlacion
 from redalimenta_comun.seguridad import token_interno
 
 from .errores import Conflicto, NoEncontrado, ServicioNoDisponible, TransicionInvalida
@@ -21,7 +22,8 @@ class ClienteCatalogo:
     def _pedir(self, metodo: str, ruta: str, reintentos: int = 1, **kwargs) -> httpx.Response:
         for intento in range(reintentos + 1):
             try:
-                return self._http.request(metodo, f"{self.url}{ruta}", headers={"X-Token-Interno": token_interno()},
+                return self._http.request(metodo, f"{self.url}{ruta}", headers={"X-Token-Interno": token_interno(),
+                                                   correlacion.CABECERA: correlacion.actual()},
                                           **kwargs)
             except httpx.HTTPError as error:
                 if intento == reintentos:

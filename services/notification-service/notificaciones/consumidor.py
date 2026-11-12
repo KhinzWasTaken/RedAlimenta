@@ -1,7 +1,7 @@
 """Consumidor de eventos (S5-14): cada evento del catálogo crea la notificación de su destinatario."""
 from datetime import datetime, timedelta, timezone
 
-from redalimenta_comun.eventos import Consumidor, Evento
+from redalimenta_comun.eventos import Consumidor, Evento, primera_vez
 
 from . import repositorio as repo
 from .db import sesiones
@@ -81,6 +81,8 @@ def procesar(evento: Evento) -> int:
     if not pares:
         return 0
     with sesiones()() as db:
+        if not primera_vez(db, evento, COLA):  # S6-05: reentrega del broker → sin notificaciones repetidas
+            return 0
         for id_usuario, mensaje in pares:
             repo.crear_notificacion(db, id_usuario, evento.tipo, mensaje)
         db.commit()

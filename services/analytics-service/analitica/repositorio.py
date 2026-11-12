@@ -19,6 +19,7 @@ def guardar_evento(db: Session, e: Evento) -> bool:
         id_evento=uuid.UUID(e.id_evento), tipo=e.tipo, version=e.version, origen=e.origen or "desconocido",
         fecha=datetime.fromisoformat(e.fecha), id_actor=e.id_actor, entidad=e.entidad, id_entidad=e.id_entidad,
         estado_anterior=e.estado_anterior, estado_nuevo=e.estado_nuevo, datos=e.datos or {},
+        id_correlacion=None if e.id_correlacion in (None, "-") else e.id_correlacion,
     ).on_conflict_do_nothing(index_elements=["id_evento"]).returning(HistorialEvento.id_evento)).first()
     return fila is not None
 
@@ -44,4 +45,5 @@ def por_usuario(db: Session, id_usuario: int, limite: int = 500) -> list[Histori
 def a_dict(h: HistorialEvento) -> dict:
     return {"id_evento": str(h.id_evento), "tipo": h.tipo, "version": h.version, "origen": h.origen,
             "fecha": h.fecha.isoformat(), "id_actor": h.id_actor, "entidad": h.entidad, "id_entidad": h.id_entidad,
-            "estado_anterior": h.estado_anterior, "estado_nuevo": h.estado_nuevo, "datos": h.datos}
+            "estado_anterior": h.estado_anterior, "estado_nuevo": h.estado_nuevo, "datos": h.datos,
+            "id_correlacion": h.id_correlacion}

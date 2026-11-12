@@ -32,5 +32,7 @@ class HistorialEvento(Base):
     estado_anterior: Mapped[str | None] = mapped_column(String(40), comment="Estado antes del cambio.")
     estado_nuevo: Mapped[str | None] = mapped_column(String(40), comment="Estado después del cambio.")
     datos: Mapped[dict] = mapped_column(JSONB, comment="Contexto del evento (participantes, alimento...).")
+    id_correlacion: Mapped[str | None] = mapped_column(
+        String(64), index=True, comment="Operación que lo originó (S6-09); une eventos de varios servicios.")
     fecha_recepcion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), comment="Cuándo lo recibió analytics.")

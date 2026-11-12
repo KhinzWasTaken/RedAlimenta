@@ -1,9 +1,11 @@
 """Modelo de identity-service (Sprint 3, entidades 1–4). Los comentarios alimentan el diccionario de datos."""
+import uuid
 from datetime import datetime
 
 from sqlalchemy import (
     BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Index, SmallInteger, String, Text, func, text,
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -82,3 +84,15 @@ class RegistroAuditoria(Base):
     valor_nuevo: Mapped[str | None] = mapped_column(Text, comment="Estado o valor después del cambio.")
     fecha_operacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=AHORA, comment="Cuándo ocurrió.")
+
+
+class EventoProcesado(Base):
+    """Añadido en el Sprint 6 (S6-05): eventos ya procesados por el consumidor, para no repetir efectos."""
+
+    __tablename__ = "evento_procesado"
+    __table_args__ = {"comment": "Idempotencia del consumidor: un id_evento se procesa una sola vez."}
+    id_evento: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                                 comment="Identificador del evento recibido.")
+    cola: Mapped[str] = mapped_column(String(60), comment="Cola de RabbitMQ que lo entregó.")
+    fecha_proceso: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                    comment="Cuándo se procesó.")

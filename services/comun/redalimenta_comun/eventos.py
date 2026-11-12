@@ -20,6 +20,8 @@ from typing import Any
 import pika
 from pika.exceptions import AMQPError
 
+from . import correlacion
+
 log = logging.getLogger("redalimenta.eventos")
 EXCHANGE = "redalimenta.eventos"
 
@@ -41,6 +43,7 @@ class Evento:
     id_evento: str = field(default_factory=lambda: str(uuid.uuid4()))
     version: int = 1
     fecha: str = field(default_factory=_ahora)
+    id_correlacion: str = field(default_factory=correlacion.actual)
 
     def a_json(self) -> bytes:
         return json.dumps(asdict(self), ensure_ascii=False, default=str).encode()
@@ -96,7 +99,8 @@ class PublicadorRabbit:
                     self._canal_abierto().basic_publish(
                         EXCHANGE, evento.tipo, evento.a_json(),
                         pika.BasicProperties(content_type="application/json", delivery_mode=2,
-                                             message_id=evento.id_evento, type=evento.tipo))
+                                             message_id=evento.id_evento, type=evento.tipo,
+                                             correlation_id=evento.id_correlacion))
                     return
                 except AMQPError:
                     self._conexion = None
@@ -173,7 +177,9 @@ class Consumidor(threading.Thread):
                     if metodo is None:
                         continue
                     try:
-                        self.manejador(Evento.desde_json(cuerpo))
+                        evento = Evento.desde_json(cuerpo)
+                        correlacion.fijar(evento.id_correlacion)
+                        self.manejador(evento)
                         canal.basic_ack(metodo.delivery_tag)
                     except Exception:
                         log.exception("Fallo procesando un evento de %s; se reintentará", self.cola)
@@ -184,3 +190,16 @@ class Consumidor(threading.Thread):
             except AMQPError:
                 log.warning("RabbitMQ no disponible para %s; reintento en 3 s", self.cola)
                 self._detener.wait(3)
+
+
+def primera_vez(db, evento: Evento, cola: str) -> bool:
+    """S6-05: registra el evento como procesado en la misma transacción del consumidor.
+
+    Devuelve False si ya se había procesado (el broker lo entregó de nuevo): el consumidor no repite efectos.
+    Requiere la tabla `evento_procesado` en la base del servicio.
+    """
+    from sqlalchemy import text
+    fila = db.execute(text("INSERT INTO evento_procesado (id_evento, cola) VALUES (:id, :cola) "
+                           "ON CONFLICT (id_evento) DO NOTHING RETURNING id_evento"),
+                      {"id": evento.id_evento, "cola": cola}).first()
+    return fila is not None

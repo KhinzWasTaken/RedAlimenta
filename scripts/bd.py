@@ -66,7 +66,7 @@ def preparar() -> None:
 
     Solo aplica a las URLs armadas con infra/.env (servidor local de desarrollo).
     """
-    env = _leer_env()
+    env = {**_leer_env(), **{k: v for k, v in os.environ.items() if k in ("APP_DB_PASSWORD",)}}
     if any(os.environ.get(f"{n.upper()}_DATABASE_URL") for n, _, _ in SERVICIOS) or not env.get("APP_DB_PASSWORD"):
         return
     admin = create_engine(make_url(url("identity")).set(database="postgres"), isolation_level="AUTOCOMMIT")

@@ -26,7 +26,7 @@ from notificaciones.db import ROL_APP
 
 SERVICIO = Path(__file__).resolve().parents[1]
 ADMIN_URL = os.environ.get("PRUEBAS_ADMIN_URL", "postgresql+psycopg://postgres@localhost:5432/postgres")
-TABLAS = ("notificacion",)
+TABLAS = ("evento_procesado", "notificacion")
 
 
 def alembic_cfg(url: str) -> Config:

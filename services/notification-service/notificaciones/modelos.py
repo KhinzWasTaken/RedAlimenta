@@ -1,7 +1,9 @@
 """Modelo de notification-service (Sprint 3, entidad 12). Los comentarios alimentan el diccionario de datos."""
+import uuid
 from datetime import datetime
 
 from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, Index, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -30,3 +32,15 @@ class Notificacion(Base):
         DateTime(timezone=True), comment="Cuándo la leyó el usuario.")
     estado_notificacion: Mapped[str] = mapped_column(
         ESTADO_NOTIFICACION, server_default="NO_LEIDA", comment="NO_LEIDA, LEIDA o ARCHIVADA.")
+
+
+class EventoProcesado(Base):
+    """Añadido en el Sprint 6 (S6-05): eventos ya procesados por el consumidor, para no repetir efectos."""
+
+    __tablename__ = "evento_procesado"
+    __table_args__ = {"comment": "Idempotencia del consumidor: un id_evento se procesa una sola vez."}
+    id_evento: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                                 comment="Identificador del evento recibido.")
+    cola: Mapped[str] = mapped_column(String(60), comment="Cola de RabbitMQ que lo entregó.")
+    fecha_proceso: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                    comment="Cuándo se procesó.")

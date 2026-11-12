@@ -8,10 +8,13 @@ from fastapi import APIRouter, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
+from .correlacion import FiltroCorrelacion, MiddlewareCorrelacion
 from .errores import registrar_manejadores
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
-                    format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+                    format="%(asctime)s %(levelname)s [%(name)s] [%(correlacion)s] %(message)s")
+for _manejador in logging.getLogger().handlers:
+    _manejador.addFilter(FiltroCorrelacion())
 
 
 def dependencia_sesion(sesiones: Callable[[], sessionmaker]):
@@ -39,12 +42,19 @@ def crear_app(nombre: str, routers: list[APIRouter], sesiones: Callable[[], sess
 
     app = FastAPI(title=f"RedAlimenta · {nombre}", version="1.0.0", description=descripcion, lifespan=ciclo)
     registrar_manejadores(app)
+    app.add_middleware(MiddlewareCorrelacion)
 
     @app.get("/salud", tags=["salud"])
     def salud():
+        """Preparación (readiness): el servicio y su base responden."""
         with sesiones()() as db:
             db.execute(text("SELECT 1"))
         return {"estado": "ok", "servicio": nombre}
+
+    @app.get("/vivo", tags=["salud"])
+    def vivo():
+        """Vida (liveness): el proceso responde, aunque su base esté caída (no conviene reiniciarlo por eso)."""
+        return {"estado": "vivo", "servicio": nombre}
 
     for router in routers:
         app.include_router(router)

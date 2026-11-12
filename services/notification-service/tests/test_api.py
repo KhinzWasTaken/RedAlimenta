@@ -49,3 +49,11 @@ def test_bandeja_leer_archivar_y_contador(cliente):
     assert len(cliente.get("/api/notificaciones?archivadas=true", headers=receptor).json()) == 2
     assert cliente.post("/api/notificaciones/leer-todas", headers=receptor).json()["marcadas"] == 1
     assert cliente.get("/api/notificaciones").status_code == 401
+
+
+def test_evento_repetido_no_duplica_notificaciones(cliente):
+    """S6-05: entregar dos veces el mismo id_evento no crea dos notificaciones."""
+    e = evento("ENTREGA_COMPLETADA", "PROGRAMADA", "COMPLETADA")
+    assert procesar(e) == 2
+    assert procesar(Evento.desde_json(e.a_json())) == 0
+    assert cliente.get("/api/notificaciones/no-leidas", headers=token(5, "RECEPTOR")).json() == {"no_leidas": 1}

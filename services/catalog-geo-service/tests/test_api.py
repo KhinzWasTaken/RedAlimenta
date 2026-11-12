@@ -114,3 +114,16 @@ def test_categorias_las_mantiene_el_administrador(cliente):
                          headers=ADMIN).json()["nombre_categoria"] == "Bebés y lactantes"
     assert "Bebés y lactantes" in [x["nombre_categoria"] for x in cliente.get("/api/categorias", headers=DONANTE).json()]
     assert cliente.post("/api/admin/categorias", json={"nombre_categoria": "Panadería"}, headers=ADMIN).status_code == 409
+
+
+def test_identificador_de_correlacion_viaja_hasta_el_evento(cliente, eventos):
+    """S6-09: el id que pone el gateway vuelve en la respuesta y queda en el evento publicado."""
+    r = cliente.post("/api/donaciones", json=nueva(), headers={**DONANTE, "X-Correlation-Id": "demo-123"})
+    assert r.headers["X-Correlation-Id"] == "demo-123"
+    assert eventos.eventos[-1].id_correlacion == "demo-123"
+    sin = cliente.get("/api/categorias", headers=DONANTE)
+    assert len(sin.headers["X-Correlation-Id"]) == 32  # si no llega, el servicio genera uno
+
+
+def test_vivo_no_depende_de_la_base(cliente):
+    assert cliente.get("/vivo").json()["estado"] == "vivo"

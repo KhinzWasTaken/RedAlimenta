@@ -10,7 +10,22 @@ paths:
       tags:
       - salud
       summary: Salud
+      description: 'Preparación (readiness): el servicio y su base responden.'
       operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /vivo:
+    get:
+      tags:
+      - salud
+      summary: Vivo
+      description: 'Vida (liveness): el proceso responde, aunque su base esté caída
+        (no conviene reiniciarlo por eso).'
+      operationId: vivo_vivo_get
       responses:
         '200':
           description: Successful Response

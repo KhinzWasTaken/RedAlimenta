@@ -109,3 +109,17 @@ def test_salud(cliente):
 def test_token_de_otro_servicio_es_valido_aqui(cliente, semilla):
     """D-06: cualquier servicio confía en el token firmado con el secreto compartido."""
     assert cliente.get("/api/usuarios/me", headers=token(5, "RECEPTOR")).json()["nombre"] == "Fundación Manos Unidas"
+
+
+def test_evento_repetido_no_se_audita_dos_veces(cliente, semilla, Sesion):
+    """S6-05: el broker puede entregar dos veces el mismo mensaje."""
+    from sqlalchemy import func, select
+
+    from identidad.modelos import RegistroAuditoria
+    evento = Evento(tipo="DONACION_CREADA", entidad="donacion", id_entidad=40, estado_nuevo="DISPONIBLE",
+                    id_actor=2, origen="catalog-geo")
+    procesar(evento)
+    procesar(Evento.desde_json(evento.a_json()))  # la misma entrega otra vez
+    with Sesion() as db:
+        assert db.scalar(select(func.count()).select_from(RegistroAuditoria).where(
+            RegistroAuditoria.id_registro_afectado == 40)) == 1
