@@ -3,6 +3,20 @@ import { CircleMarker, MapContainer, Popup, TileLayer, Tooltip, useMap, useMapEv
 import 'leaflet/dist/leaflet.css'
 
 export const BOGOTA = [4.65, -74.1]
+// Ciudades con datos semilla: centro del mapa y departamento que se envía a la API
+export const CIUDADES = {
+  'Bogotá': { departamento: 'Cundinamarca', centro: [4.65, -74.1] },
+  'Medellín': { departamento: 'Antioquia', centro: [6.25, -75.57] },
+  'Cali': { departamento: 'Valle del Cauca', centro: [3.44, -76.52] },
+}
+
+function Centrar({ centro }) {
+  const mapa = useMap()
+  useEffect(() => {
+    if (centro) mapa.setView(centro, 12, { animate: false })
+  }, [centro?.[0], centro?.[1]]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
 
 function AlHacerClic({ onClic }) {
   useMapEvents({ click: (e) => onClic?.({ lat: +e.latlng.lat.toFixed(6), lon: +e.latlng.lng.toFixed(6) }) })
@@ -14,8 +28,8 @@ function Encuadrar({ puntos, clave }) {
   const mapa = useMap()
   useEffect(() => {
     if (!puntos.length) return
-    if (puntos.length === 1) mapa.setView(puntos[0], Math.max(mapa.getZoom(), 13))
-    else mapa.fitBounds(puntos, { padding: [36, 36], maxZoom: 14 })
+    if (puntos.length === 1) mapa.setView(puntos[0], Math.max(mapa.getZoom(), 13), { animate: false })
+    else mapa.fitBounds(puntos, { padding: [36, 36], maxZoom: 14, animate: false })
   }, [clave]) // eslint-disable-line react-hooks/exhaustive-deps
   // El contenedor puede cambiar de tamaño (pestañas, ventana): recalcula para no dejar zonas grises
   useEffect(() => {
@@ -27,7 +41,7 @@ function Encuadrar({ puntos, clave }) {
 
 // Mapa de OpenStreetMap. `marcadores`: [{id, lat, lon, color, radio, popup, etiqueta}]; `punto`: {lat, lon}.
 export default function Mapa({ marcadores = [], punto, etiquetaPunto = 'Punto elegido', onClic, alto = 320,
-  encuadrar = true }) {
+  encuadrar = true, centro }) {
   const [sinFondo, setSinFondo] = useState(false)
   const puntos = useMemo(
     () => [...marcadores.map((m) => [m.lat, m.lon]), ...(punto ? [[punto.lat, punto.lon]] : [])],
@@ -46,6 +60,7 @@ export default function Mapa({ marcadores = [], punto, etiquetaPunto = 'Punto el
         />
         <AlHacerClic onClic={onClic} />
         {encuadrar && <Encuadrar puntos={puntos} clave={clave} />}
+        <Centrar centro={centro} />
         {marcadores.map((m) => (
           <CircleMarker key={m.id} center={[m.lat, m.lon]} radius={m.radio || 9}
             pathOptions={{ color: '#ffffff', weight: 2, fillColor: m.color || '#1f7a4d', fillOpacity: 0.95 }}>

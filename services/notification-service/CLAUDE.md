@@ -8,6 +8,12 @@ Requerimientos: RF7. Base propia: `redalimenta_notification` (sin claves foráne
 - `notificaciones/semilla.py`: datos semilla con identificadores fijos (ver `docs/modelo/datos-semilla.md`).
 - `migrations/`: migraciones Alembic; el esquema de la base debe coincidir con `modelos.py` (lo prueba `tests/test_esquema.py`).
 
+## API (Sprint 5)
+- `notificaciones/app.py` (puerto 8004), `notificaciones/rutas.py`: bandeja del usuario (`/api/notificaciones`).
+- `notificaciones/consumidor.py`: convierte cada evento en las notificaciones de sus destinatarios.
+- Eventos: Consume `#` en `notification.bandeja`; el mapa evento → destinatario está en `consumidor.py::destinatarios`. Catálogo en `docs/contratos/eventos/README.md`.
+- Plantilla común (JWT, errores, eventos, /salud): `services/comun`.
+
 ## Reglas que no se cambian
 - No hay notificación sin usuario ni mensaje; el contenido no cambia después de creada.
 - El rol de aplicación solo puede actualizar `estado_notificacion` y `fecha_lectura`.
@@ -18,6 +24,7 @@ Requerimientos: RF7. Base propia: `redalimenta_notification` (sin claves foráne
 ```bash
 # desde la raíz del repositorio, con infra/docker-compose.yml levantado
 python scripts/bd.py migrar
+python scripts/levantar.py          # todo el sistema
 python scripts/probar.py notification
 ```
 Las pruebas crean y borran una base temporal (PRUEBAS_ADMIN_URL, superusuario); nunca usan las bases reales.

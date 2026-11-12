@@ -1,5 +1,8 @@
-# Dependencias para trabajar con todos los servicios desde la raíz (scripts/bd.py y scripts/probar.py)
+# Todo lo necesario para trabajar con los servicios desde la raíz del repositorio
+-e services/comun
 -r services/identity-service/requirements.txt
 -r services/catalog-geo-service/requirements.txt
 -r services/fulfillment-service/requirements.txt
 -r services/notification-service/requirements.txt
+-r services/analytics-service/requirements.txt
+PyYAML>=6

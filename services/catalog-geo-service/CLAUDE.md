@@ -8,6 +8,12 @@ Requerimientos: RF2, RF3, RF4. Base propia: `redalimenta_catalog` (sin claves fo
 - `catalogo/semilla.py`: datos semilla con identificadores fijos (ver `docs/modelo/datos-semilla.md`).
 - `migrations/`: migraciones Alembic; el esquema de la base debe coincidir con `modelos.py` (lo prueba `tests/test_esquema.py`).
 
+## API (Sprint 5)
+- `catalogo/app.py` (puerto 8002), `catalogo/rutas.py`: categorías, donaciones, necesidades y búsqueda (`/api/...`); API interna `/internal/...` con `X-Token-Interno` (D-01).
+- `catalogo/servicio.py`: casos de uso; publican los eventos después del commit (`Lote`).
+- Eventos: Publica DONACION_* y NECESIDAD_*. No consume eventos. Catálogo en `docs/contratos/eventos/README.md`.
+- Plantilla común (JWT, errores, eventos, /salud): `services/comun`.
+
 ## Reglas que no se cambian
 - D-01: solo este servicio cambia `estado_donacion`, siempre con `repositorio.transicionar_donacion`; la base también valida (`trg_donacion_validar`).
 - Una donación solo se modifica DISPONIBLE; una necesidad, ABIERTA y por su receptor.
@@ -19,6 +25,7 @@ Requerimientos: RF2, RF3, RF4. Base propia: `redalimenta_catalog` (sin claves fo
 ```bash
 # desde la raíz del repositorio, con infra/docker-compose.yml levantado
 python scripts/bd.py migrar
+python scripts/levantar.py          # todo el sistema
 python scripts/probar.py catalog
 ```
 Las pruebas crean y borran una base temporal (PRUEBAS_ADMIN_URL, superusuario); nunca usan las bases reales.

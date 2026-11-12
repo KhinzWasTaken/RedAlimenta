@@ -8,6 +8,12 @@ Requerimientos: RF1, RF10. Base propia: `redalimenta_identity` (sin claves forá
 - `identidad/semilla.py`: datos semilla con identificadores fijos (ver `docs/modelo/datos-semilla.md`).
 - `migrations/`: migraciones Alembic; el esquema de la base debe coincidir con `modelos.py` (lo prueba `tests/test_esquema.py`).
 
+## API (Sprint 5)
+- `identidad/app.py` (puerto 8001), `identidad/rutas.py`: registro, login, refresh y perfil (`/api/auth`, `/api/usuarios`); verificación y auditoría para el administrador (`/api/admin/...`).
+- `identidad/servicio.py`: casos de uso; publican los eventos después del commit (`Lote`).
+- Eventos: Publica USUARIO_*; audita sus propios eventos en la misma transacción. Consume `#` en la cola `identity.auditoria` para auditar los de los demás (D-04). Catálogo en `docs/contratos/eventos/README.md`.
+- Plantilla común (JWT, errores, eventos, /salud): `services/comun`.
+
 ## Reglas que no se cambian
 - Una verificación resuelta no cambia (trigger `trg_verificacion_validar`); solo un ADMINISTRADOR resuelve.
 - `registro_auditoria` es de solo inserción: trigger + REVOKE UPDATE/DELETE al rol de aplicación (D-04).
@@ -19,6 +25,7 @@ Requerimientos: RF1, RF10. Base propia: `redalimenta_identity` (sin claves forá
 ```bash
 # desde la raíz del repositorio, con infra/docker-compose.yml levantado
 python scripts/bd.py migrar
+python scripts/levantar.py          # todo el sistema
 python scripts/probar.py identity
 ```
 Las pruebas crean y borran una base temporal (PRUEBAS_ADMIN_URL, superusuario); nunca usan las bases reales.

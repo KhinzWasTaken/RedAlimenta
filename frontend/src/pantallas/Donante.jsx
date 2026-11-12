@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api, fecha, restante } from '../api'
 import { Aviso, Estado, useAccion, useDatos, useEscritorio } from '../componentes/Comunes'
-import Mapa from '../componentes/Mapa'
+import Mapa, { CIUDADES } from '../componentes/Mapa'
 
 // Las fechas se capturan y muestran en hora de Colombia (UTC-5), sin importar la zona del navegador
 const enDias = (dias) => new Date(Date.now() + dias * 864e5 - 5 * 36e5).toISOString().slice(0, 16)
@@ -15,6 +15,7 @@ const VACIO = {
   fecha_vencimiento: enDias(2),
   condiciones_recogida: '',
   direccion_referencia: '',
+  ciudad: 'Bogotá',
 }
 
 export function Publicar({ onPublicada }) {
@@ -41,7 +42,12 @@ export function Publicar({ onPublicada }) {
           unidad_medida: f.unidad_medida,
           fecha_vencimiento: aIsoBogota(f.fecha_vencimiento),
           condiciones_recogida: f.condiciones_recogida || null,
-          ubicacion: { ...punto, direccion_referencia: f.direccion_referencia || null, ciudad: 'Bogotá' },
+          ubicacion: {
+            ...punto,
+            direccion_referencia: f.direccion_referencia || null,
+            ciudad: f.ciudad,
+            departamento: CIUDADES[f.ciudad].departamento,
+          },
         },
       }),
     )
@@ -57,8 +63,17 @@ export function Publicar({ onPublicada }) {
       <h2>Publicar donación</h2>
       <div className="publicar">
       <div className="publicar-mapa">
+      <label>
+        Ciudad
+        <select value={f.ciudad} onChange={(e) => { setF({ ...f, ciudad: e.target.value }); setPunto(null) }}>
+          {Object.keys(CIUDADES).map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+      </label>
       <p className="tenue">Toca el mapa para marcar dónde se recoge.</p>
-      <Mapa punto={punto} onClic={setPunto} etiquetaPunto="Punto de recogida" encuadrar={false} alto={escritorio ? 'calc(100vh - 260px)' : 260} />
+      <Mapa punto={punto} onClic={setPunto} etiquetaPunto="Punto de recogida" encuadrar={false}
+        centro={CIUDADES[f.ciudad].centro} alto={escritorio ? 'calc(100vh - 260px)' : 260} />
       {punto && (
         <p className="tenue pequeno">
           Punto: {punto.lat}, {punto.lon}

@@ -2,20 +2,67 @@
 
 Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 
-- **Proyecto final (Sprints 4–8)**, en construcción: microservicios con PostgreSQL + PostGIS
+- **Proyecto final (Sprints 4–8)**, en construcción: microservicios con PostgreSQL + PostGIS y RabbitMQ
   (`services/`, `infra/`, `scripts/`). Plan en `docs/contexto/plan-sprints-4-8.md`.
 - **Prototipo de clase** (más abajo): una sola aplicación con SQLite (`backend/`, `frontend/`).
-  Sigue funcionando hasta que el Sprint 5 lo reemplace por los servicios.
+  Queda como referencia; el sistema vigente son los servicios (`python scripts/levantar.py`).
 
 ## Proyecto final · estado
 
 | Sprint | Tema | Estado |
 | --- | --- | --- |
 | 4 | Base transaccional: DDL, DML, CRUD, OLTP | ✅ Listo |
-| 5 | Aplicación: API REST por servicio, eventos, frontend | Pendiente |
+| 5 | Aplicación: API REST por servicio, eventos, frontend | ✅ Listo |
 | 6 | Docker, gateway, Kubernetes | Pendiente |
 | 7 | Almacén de datos y ETL | Pendiente |
 | 8 | Indicadores, tablero y documentación final | Pendiente |
+
+### Ejecutar el sistema completo (Sprint 5)
+
+Requisitos: Docker Desktop, Python 3.11+ y Node.js 18+. Una vez:
+
+```bash
+copy infra\.env.example infra\.env
+```
+
+(en macOS/Linux: `cp infra/.env.example infra/.env`; luego cambia todas las claves del archivo)
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Para levantar todo (PostgreSQL, RabbitMQ, migraciones, los 5 servicios y el frontend):
+
+```bash
+python scripts/levantar.py --reiniciar
+```
+
+Abre **http://localhost:5173**. Sin `--reiniciar` conserva los datos. Ctrl+C detiene todo.
+
+| Servicio | Puerto | Documentación de la API | Responsabilidad |
+| --- | --- | --- | --- |
+| identity-service | 8001 | http://localhost:8001/docs | Cuentas, JWT, verificación, auditoría (RF1, RF10) |
+| catalog-geo-service | 8002 | http://localhost:8002/docs | Donaciones, necesidades, búsqueda geoespacial (RF2–RF4) |
+| fulfillment-service | 8003 | http://localhost:8003/docs | Reservas, entregas, tareas automáticas (RF5, RF6, RF8) |
+| notification-service | 8004 | http://localhost:8004/docs | Notificaciones in-app (RF7) |
+| analytics-service | 8005 | http://localhost:8005/docs | Historial de eventos (RF10); indicadores en Sprints 7–8 |
+| RabbitMQ | 15672 | consola web (usuario y clave de `infra/.env`) | Eventos entre servicios |
+
+Cómo encajan: cada servicio tiene su base y su rol de base de datos; los cambios de estado viajan como
+eventos por RabbitMQ (auditoría, notificaciones e historial los consumen); la única llamada directa es
+fulfillment → catalog-geo para cambiar el estado de una donación (D-01). En desarrollo, Vite reparte cada
+prefijo de `/api` al servicio que lo atiende según `infra/rutas.json` (en el Sprint 6 lo hará el gateway).
+
+Comprobaciones:
+
+| Comando | Qué hace |
+| --- | --- |
+| `python scripts/probar.py` | Pruebas de los 5 servicios contra PostgreSQL real (83 pruebas) |
+| `python scripts/e2e.py` | Con el sistema levantado y recién sembrado: flujo completo con eventos reales (S5-21) |
+| `python scripts/contratos.py --revisar` | Falla si el código cambió y los contratos OpenAPI guardados no |
+
+Contratos: `docs/contratos/openapi/*.yaml` (uno por servicio, más la API interna de catalog) y
+`docs/contratos/eventos/` (catálogo de eventos y esquema JSON del sobre común).
 
 ### Sprint 4 · Base transaccional
 
@@ -64,7 +111,7 @@ Otros comandos:
 | `python scripts/bd.py sembrar` | Inserta los datos semilla si las tablas están vacías |
 | `python scripts/bd.py verificar` | Conciliación entre bases (referencias y estados coherentes) |
 | `python scripts/bd.py diccionario` | Regenera `docs/modelo/diccionario-datos.md` desde las bases |
-| `python scripts/probar.py` | Pruebas de los cuatro servicios contra PostgreSQL real (54 pruebas) |
+| `python scripts/probar.py` | Pruebas de los servicios contra PostgreSQL real |
 
 Qué demuestran las pruebas: restricciones e integridad, transiciones de estado validadas por la base
 (triggers), permisos del rol de aplicación (sin DELETE; auditoría solo inserción), búsqueda geoespacial
@@ -79,7 +126,9 @@ Documentación del sprint: `docs/modelo/diccionario-datos.md`, `docs/modelo/norm
 
 # Prototipo de clase
 
-Primera versión, presentada antes del proyecto final. Aplicación web geoespacial que conecta donantes de
+Primera versión, presentada antes del proyecto final. **Desde el Sprint 5 el frontend (`frontend/`) habla con
+los microservicios**, así que `demo.py` ya no muestra todas las pantallas. Para ver el prototipo exactamente como
+se presentó: `git checkout 1e6fec5` (y `git checkout -` para volver). Aplicación web geoespacial que conecta donantes de
 alimentos con receptores según ubicación, disponibilidad y urgencia, con trazabilidad de
 cada entrega.
 
