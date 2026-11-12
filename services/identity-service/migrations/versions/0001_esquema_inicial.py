@@ -54,7 +54,7 @@ def upgrade() -> None:
                   comment="ACTIVA o DESACTIVADA; desactivar no borra la fila."),
         sa.Column("fecha_registro", TS, nullable=False, server_default=sa.func.now(),
                   comment="Fecha de creación de la cuenta."),
-        sa.CheckConstraint("correo_electronico LIKE '%_@_%'", name="ck_usuario_correo_valido"),
+        sa.CheckConstraint("correo_electronico LIKE '%_@_%'", name=op.f("ck_usuario_correo_valido")),
         comment="Personas y organizaciones registradas (donantes, receptores, administradores).",
     )
     op.create_index("ix_usuario_id_rol", "usuario", ["id_rol"])
@@ -76,9 +76,9 @@ def upgrade() -> None:
         sa.Column("fecha_resolucion", TS, comment="Cuándo se resolvió; NULL mientras está PENDIENTE."),
         sa.Column("observaciones", sa.Text, comment="Motivo de la decisión."),
         sa.CheckConstraint("(estado_verificacion = 'PENDIENTE') = (fecha_resolucion IS NULL)",
-                           name="ck_verificacion_usuario_resolucion_fechada"),
+                           name=op.f("ck_verificacion_usuario_resolucion_fechada")),
         sa.CheckConstraint("estado_verificacion = 'PENDIENTE' OR id_administrador IS NOT NULL",
-                           name="ck_verificacion_usuario_resolucion_con_administrador"),
+                           name=op.f("ck_verificacion_usuario_resolucion_con_administrador")),
         comment="Procesos de verificación de identidad; solo un administrador los resuelve.",
     )
     op.create_index("ix_verificacion_usuario_id_usuario", "verificacion_usuario", ["id_usuario"])

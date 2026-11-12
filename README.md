@@ -1,6 +1,85 @@
-# RedAlimenta — prototipo de clase
+# RedAlimenta
 
-Trabajo de Bases de Datos Avanzadas. Aplicación web geoespacial que conecta donantes de
+Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
+
+- **Proyecto final (Sprints 4–8)**, en construcción: microservicios con PostgreSQL + PostGIS
+  (`services/`, `infra/`, `scripts/`). Plan en `docs/contexto/plan-sprints-4-8.md`.
+- **Prototipo de clase** (más abajo): una sola aplicación con SQLite (`backend/`, `frontend/`).
+  Sigue funcionando hasta que el Sprint 5 lo reemplace por los servicios.
+
+## Proyecto final · estado
+
+| Sprint | Tema | Estado |
+| --- | --- | --- |
+| 4 | Base transaccional: DDL, DML, CRUD, OLTP | ✅ Listo |
+| 5 | Aplicación: API REST por servicio, eventos, frontend | Pendiente |
+| 6 | Docker, gateway, Kubernetes | Pendiente |
+| 7 | Almacén de datos y ETL | Pendiente |
+| 8 | Indicadores, tablero y documentación final | Pendiente |
+
+### Sprint 4 · Base transaccional
+
+Cuatro bases separadas, una por servicio, en un servidor PostgreSQL 16 con PostGIS:
+
+| Servicio | Base | Tablas |
+| --- | --- | --- |
+| `services/identity-service` | `redalimenta_identity` | rol, usuario, verificacion_usuario, registro_auditoria |
+| `services/catalog-geo-service` | `redalimenta_catalog` | categoria_alimento, ubicacion_geografica (PostGIS), donacion, necesidad_alimentaria |
+| `services/fulfillment-service` | `redalimenta_fulfillment` | reserva, entrega, confirmacion_entrega |
+| `services/notification-service` | `redalimenta_notification` | notificacion |
+
+Requisitos: Docker Desktop y Python 3.11+.
+
+1. Crear el archivo de contraseñas locales (no se sube al repositorio) y editarlo:
+
+   ```bash
+   copy infra\.env.example infra\.env
+   ```
+
+   (en macOS/Linux: `cp infra/.env.example infra/.env`)
+
+2. Levantar PostgreSQL con las cuatro bases:
+
+   ```bash
+   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+   ```
+
+3. Instalar dependencias:
+
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+4. Crear el esquema y cargar los datos semilla (Bogotá, Medellín y Cali), y comprobar la coherencia entre bases:
+
+   ```bash
+   python scripts/bd.py reiniciar
+   ```
+
+Otros comandos:
+
+| Comando | Qué hace |
+| --- | --- |
+| `python scripts/bd.py migrar` / `revertir` | Aplica o revierte todas las migraciones Alembic |
+| `python scripts/bd.py sembrar` | Inserta los datos semilla si las tablas están vacías |
+| `python scripts/bd.py verificar` | Conciliación entre bases (referencias y estados coherentes) |
+| `python scripts/bd.py diccionario` | Regenera `docs/modelo/diccionario-datos.md` desde las bases |
+| `python scripts/probar.py` | Pruebas de los cuatro servicios contra PostgreSQL real (54 pruebas) |
+
+Qué demuestran las pruebas: restricciones e integridad, transiciones de estado validadas por la base
+(triggers), permisos del rol de aplicación (sin DELETE; auditoría solo inserción), búsqueda geoespacial
+ordenada por metros con el puntaje D-08 verificado a mano, **20 conexiones reservando la misma donación
+con una sola reserva activa** (D-02), expiración en lote idempotente y migraciones que se aplican y
+revierten desde cero.
+
+Documentación del sprint: `docs/modelo/diccionario-datos.md`, `docs/modelo/normalizacion.md`,
+`docs/modelo/datos-semilla.md`, `docs/modelo/estados.md` y `docs/decisiones/README.md`.
+
+---
+
+# Prototipo de clase
+
+Primera versión, presentada antes del proyecto final. Aplicación web geoespacial que conecta donantes de
 alimentos con receptores según ubicación, disponibilidad y urgencia, con trazabilidad de
 cada entrega.
 

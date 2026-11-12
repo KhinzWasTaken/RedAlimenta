@@ -84,9 +84,9 @@ def upgrade() -> None:
         sa.Column("condiciones_recogida", sa.Text, comment="Horario, cadena de frío, acceso..."),
         sa.Column("estado_donacion", estado_donacion, nullable=False, server_default="DISPONIBLE",
                   comment="DISPONIBLE, RESERVADA, ENTREGADA, CANCELADA o VENCIDA."),
-        sa.CheckConstraint("cantidad > 0", name="ck_donacion_cantidad_positiva"),
+        sa.CheckConstraint("cantidad > 0", name=op.f("ck_donacion_cantidad_positiva")),
         sa.CheckConstraint("fecha_vencimiento IS NULL OR fecha_vencimiento > fecha_publicacion",
-                           name="ck_donacion_vence_despues_de_publicar"),
+                           name=op.f("ck_donacion_vence_despues_de_publicar")),
         comment="Alimentos ofrecidos por los donantes. Solo este servicio cambia estado_donacion (D-01).",
     )
     for columna in ("id_donante", "id_categoria", "id_ubicacion", "estado_donacion"):
@@ -113,7 +113,7 @@ def upgrade() -> None:
         sa.Column("fecha_limite", TS, comment="Hasta cuándo se necesita."),
         sa.Column("estado_necesidad", estado_necesidad, nullable=False, server_default="ABIERTA",
                   comment="ABIERTA, CERRADA o CANCELADA."),
-        sa.CheckConstraint("cantidad_requerida > 0", name="ck_necesidad_alimentaria_cantidad_positiva"),
+        sa.CheckConstraint("cantidad_requerida > 0", name=op.f("ck_necesidad_alimentaria_cantidad_positiva")),
         comment="Lo que necesitan los receptores; alimenta la búsqueda y la prioridad (D-05).",
     )
     for columna in ("id_receptor", "id_categoria", "id_ubicacion"):

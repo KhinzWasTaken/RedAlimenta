@@ -1,0 +1,5 @@
+# Dependencias para trabajar con todos los servicios desde la raíz (scripts/bd.py y scripts/probar.py)
+-r services/identity-service/requirements.txt
+-r services/catalog-geo-service/requirements.txt
+-r services/fulfillment-service/requirements.txt
+-r services/notification-service/requirements.txt
