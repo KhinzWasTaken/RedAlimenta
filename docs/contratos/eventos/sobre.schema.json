@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redalimenta.co/contratos/eventos/sobre.schema.json",
+  "title": "Sobre común de los eventos de RedAlimenta",
+  "description": "Todo evento publicado en el exchange topic 'redalimenta.eventos' (clave de enrutamiento = tipo) tiene esta forma. Implementación: services/comun/redalimenta_comun/eventos.py.",
+  "type": "object",
+  "required": ["id_evento", "tipo", "version", "fecha", "origen", "entidad", "id_entidad", "datos"],
+  "additionalProperties": false,
+  "properties": {
+    "id_evento": {"type": "string", "format": "uuid", "description": "Único por evento; los consumidores lo usan para no duplicar."},
+    "tipo": {"type": "string", "pattern": "^[A-Z]+(_[A-Z]+)+$", "description": "Ver docs/contratos/eventos/README.md."},
+    "version": {"type": "integer", "minimum": 1},
+    "fecha": {"type": "string", "format": "date-time", "description": "Cuándo ocurrió, en UTC con zona."},
+    "origen": {"type": "string", "enum": ["identity", "catalog-geo", "fulfillment"]},
+    "id_actor": {"type": ["integer", "null"], "description": "Usuario que lo provocó; null = sistema (tareas automáticas)."},
+    "entidad": {"type": "string", "enum": ["usuario", "verificacion", "donacion", "necesidad", "reserva", "entrega"]},
+    "id_entidad": {"type": "integer"},
+    "estado_anterior": {"type": ["string", "null"]},
+    "estado_nuevo": {"type": ["string", "null"]},
+    "datos": {"type": "object", "description": "Contexto propio de cada tipo de evento (participantes, alimento, motivo...)."}
+  }
+}

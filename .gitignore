@@ -9,3 +9,7 @@ venv/
 node_modules/
 frontend/dist/
 .env
+
+# Infraestructura local
+infra/.env
+*.egg-info/

@@ -21,8 +21,8 @@ export function Cuentas() {
       <div className="encabezado">
         <h2>Verificación de cuentas</h2>
         <button className="secundario" disabled={ocupado}
-          onClick={() => ejecutar(() => api('/admin/tareas/ejecutar', { method: 'POST' }),
-            (r) => `Tareas: ${r.reservas_expiradas} reservas expiradas, ${r.donaciones_vencidas} donaciones vencidas, ${r.avisos_por_vencer} avisos.`)}>
+          onClick={() => ejecutar(() => api('/tareas/ejecutar', { method: 'POST' }),
+            (r) => `Tareas: ${r.reservas_expiradas} reservas expiradas, ${r.donaciones_vencidas} donaciones vencidas, ${r.avisos_por_vencer} avisos, ${r.conciliadas} conciliadas.`)}>
           Ejecutar tareas
         </button>
       </div>
@@ -118,6 +118,52 @@ export function Auditoria() {
           </tbody>
         </table>
       </div>
+    </section>
+  )
+}
+
+// Administrador: mantener el catálogo de categorías de alimentos (S5-20)
+export function Categorias() {
+  const categorias = useDatos('/categorias')
+  const [nueva, setNueva] = useState({ nombre_categoria: '', descripcion: '' })
+  const [edicion, setEdicion] = useState({})
+  const { ocupado, mensaje, setMensaje, ejecutar } = useAccion(categorias.recargar)
+
+  const crear = async (e) => {
+    e.preventDefault()
+    const r = await ejecutar(() => api('/admin/categorias', { method: 'POST', body: nueva }), 'Categoría creada.')
+    if (r) setNueva({ nombre_categoria: '', descripcion: '' })
+  }
+  const guardar = (c) =>
+    ejecutar(() => api(`/admin/categorias/${c.id_categoria}`, {
+      method: 'PATCH', body: { nombre_categoria: edicion[c.id_categoria], descripcion: c.descripcion },
+    }), 'Categoría actualizada.')
+
+  return (
+    <section>
+      <h2>Categorías de alimentos</h2>
+      <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
+      <Aviso mensaje={categorias.error} />
+      <div className="rejilla">
+        {categorias.datos?.map((c) => (
+          <article key={c.id_categoria} className="tarjeta">
+            <input value={edicion[c.id_categoria] ?? c.nombre_categoria}
+              onChange={(e) => setEdicion({ ...edicion, [c.id_categoria]: e.target.value })} />
+            <p className="pequeno tenue">{c.descripcion}</p>
+            {edicion[c.id_categoria] !== undefined && edicion[c.id_categoria] !== c.nombre_categoria && (
+              <button disabled={ocupado} onClick={() => guardar(c)}>Guardar nombre</button>
+            )}
+          </article>
+        ))}
+      </div>
+      <form className="formulario" onSubmit={crear}>
+        <h3>Nueva categoría</h3>
+        <input placeholder="Nombre" required minLength={2} value={nueva.nombre_categoria}
+          onChange={(e) => setNueva({ ...nueva, nombre_categoria: e.target.value })} />
+        <input placeholder="Descripción (opcional)" value={nueva.descripcion}
+          onChange={(e) => setNueva({ ...nueva, descripcion: e.target.value })} />
+        <button type="submit" disabled={ocupado}>Crear categoría</button>
+      </form>
     </section>
   )
 }

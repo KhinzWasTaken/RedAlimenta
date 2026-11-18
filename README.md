@@ -1,6 +1,233 @@
-# RedAlimenta — prototipo de clase
+# RedAlimenta
 
-Trabajo de Bases de Datos Avanzadas. Aplicación web geoespacial que conecta donantes de
+Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
+
+- **Proyecto final (Sprints 4–8)**, terminado: microservicios con PostgreSQL + PostGIS y RabbitMQ
+  (`services/`, `infra/`, `scripts/`). Plan en `docs/contexto/plan-sprints-4-8.md`.
+- **Prototipo de clase** (más abajo): una sola aplicación con SQLite (`backend/`, `frontend/`).
+  Queda como referencia; el sistema vigente son los servicios (`python scripts/levantar.py`).
+
+## Proyecto final · estado
+
+| Sprint | Tema | Estado |
+| --- | --- | --- |
+| 4 | Base transaccional: DDL, DML, CRUD, OLTP | ✅ Listo |
+| 5 | Aplicación: API REST por servicio, eventos, frontend | ✅ Listo |
+| 6 | Docker, gateway, Kubernetes | ✅ Listo (Kubernetes validado sin clúster; ver abajo) |
+| 7 | Almacén de datos y ETL | ✅ Listo |
+| 8 | Indicadores, tablero, trazabilidad, seguridad y documentación final | ✅ Listo |
+
+### Probar en un PC con Windows
+
+En PowerShell, desde la raíz del repositorio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\preparar_windows.ps1 -Instalar -Levantar
+```
+
+Instala con winget lo que falte (Git, Docker Desktop, Python, Node.js), corrige los saltos de línea de los
+scripts que corren en contenedores, crea o completa `infra\.env` con claves aleatorias, cambia de puerto si
+alguno está ocupado, crea `.venv` con las dependencias de Python y levanta todo en Docker. Se puede repetir
+sin perder datos. Después: **http://localhost:8080**.
+
+### Documentación
+
+| Para | Documento |
+| --- | --- |
+| Usar la aplicación (donante, receptor, administrador) | `docs/manuales/usuario.md` |
+| Mantener y extender el sistema | `docs/manuales/tecnico.md` |
+| Desplegar en Kubernetes local | `docs/manuales/despliegue-kubernetes.md` |
+| Presentar la demostración (8 minutos, cuatro actores) | `docs/guion-demo.md` |
+| Arquitectura y bases distribuidas | `docs/arquitectura/` |
+| Modelo de datos, estados y diccionario | `docs/modelo/` |
+| Contratos de API y eventos | `docs/contratos/` |
+| Almacén de datos y calidad | `docs/dwh/` |
+| Seguridad y tratamiento de datos (Ley 1581) | `docs/seguridad/` |
+| Requerimiento → prueba | `docs/trazabilidad.md` |
+| Decisiones del equipo (D-01..D-10) | `docs/decisiones/README.md` |
+
+### Indicadores y trazabilidad (Sprint 8)
+
+El administrador tiene las pestañas **Tablero** (indicadores del RF9 sobre el almacén, filtros, mapa de
+cobertura y exportación CSV; API `/api/indicadores/*` y `/api/reportes/*.csv`) y **Trazabilidad** (historia
+completa de una donación, reserva, entrega o usuario, RF10). `python scripts/revisar_seguridad.py --bases`
+revisa controles de seguridad y `python scripts/trazabilidad.py --ejecutar` corre las 59 pruebas citadas en
+la matriz de requerimientos.
+
+### Almacén de datos (Sprint 7)
+
+Base `redalimenta_dwh` con modelo en estrella (`docs/dwh/modelo-dimensional.md`). En Docker Compose el
+servicio `etl` hace la carga completa al arrancar (50.000 donaciones sintéticas + bases transaccionales +
+eventos) y la carga continua cada 5 minutos. A mano, con el sistema levantado:
+
+| Comando | Qué hace |
+| --- | --- |
+| `python scripts/etl.py cargar completa` | Sintéticos + carga histórica + eventos (primera vez) |
+| `python scripts/etl.py cargar historica` | Copia fresca de las bases transaccionales, con un rol de solo lectura |
+| `python scripts/etl.py cargar eventos` | Carga continua desde el historial de eventos (incremental) |
+| `python scripts/etl.py indicadores` | Indicadores del RF9 por año, volumen y cobertura |
+| `python scripts/etl.py informe` | Escribe `docs/dwh/informe-calidad.md` con las reglas de calidad de la última carga |
+
+Cada carga queda en `etl.ejecucion`, se reintenta si falla y termina con 12 reglas de calidad
+(`etl.resultado_calidad`). En Kubernetes: Job de carga inicial y CronJob de eventos (cada 10 min) e
+histórico (cada noche) en `infra/k8s/etl.yaml`. Bases distribuidas: `docs/arquitectura/bases-distribuidas.md`.
+
+### Sistema completo en Docker (Sprint 6)
+
+Una sola dirección pública, el gateway, en **http://localhost:8080**. Con `infra/.env` creado (ver abajo):
+
+```bash
+docker compose -f infra/docker-compose.yml --env-file infra/.env --profile app up -d --build
+```
+
+Levanta PostgreSQL, RabbitMQ, las migraciones con datos semilla, los cinco servicios (cada uno sin
+privilegios de root y sin secretos en la imagen) y el gateway nginx con el frontend. Los servicios no
+publican puertos; `/internal` no se expone. Comprobaciones contra el gateway:
+
+| Comando | Qué demuestra |
+| --- | --- |
+| `python scripts/e2e.py --base http://localhost:8080` | Flujo completo a través del gateway (S6-02) |
+| `python scripts/resiliencia.py` | Con catalog caído, reservar responde 503 sin reservas huérfanas (S6-04) |
+| `python scripts/carga_reservas.py --base http://localhost:8080` | 20 reservas simultáneas: una 201 y 19 con 409 (S6-08) |
+| `docker compose ... logs \| findstr <id>` (`grep` en macOS/Linux) | Una operación seguida por su `X-Correlation-Id` en todos los servicios (S6-09) |
+
+Para probar con réplicas: agrega `--scale catalog=2 --scale fulfillment=2` al comando `up`.
+
+### Kubernetes local (Sprint 6)
+
+Manifiestos en `infra/k8s/` (Deployment y Service por servicio, dos réplicas y PodDisruptionBudget para
+catalog y fulfillment, sondas de vida y preparación, ConfigMap, Secret generado desde `infra/.env`, Job de
+migraciones, CronJob de tareas e Ingress). Con **Kubernetes de Docker Desktop** activado
+(Settings → Kubernetes) o con kind (`kind create cluster --name redalimenta --config scripts/kind.yaml`):
+
+```bash
+python scripts/k8s.py imagenes
+```
+
+```bash
+python scripts/k8s.py desplegar
+```
+
+```bash
+python scripts/k8s.py probar
+```
+
+La app queda en http://localhost:30080. `probar` corre el flujo completo, las 20 reservas contra dos
+réplicas y borra un pod de catalog para comprobar que el servicio sigue respondiendo.
+Arquitectura, llamadas síncronas y asíncronas y qué pasa si cae cada servicio: `docs/arquitectura/soa.md`.
+
+### Ejecutar el sistema completo en desarrollo (Sprint 5)
+
+Requisitos: Docker Desktop, Python 3.11+ y Node.js 18+. Una vez:
+
+```bash
+copy infra\.env.example infra\.env
+```
+
+(en macOS/Linux: `cp infra/.env.example infra/.env`; luego cambia todas las claves del archivo)
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Para levantar todo (PostgreSQL, RabbitMQ, migraciones, los 5 servicios y el frontend):
+
+```bash
+python scripts/levantar.py --reiniciar
+```
+
+Abre **http://localhost:5173**. Sin `--reiniciar` conserva los datos. Ctrl+C detiene todo.
+
+| Servicio | Puerto | Documentación de la API | Responsabilidad |
+| --- | --- | --- | --- |
+| identity-service | 8001 | http://localhost:8001/docs | Cuentas, JWT, verificación, auditoría (RF1, RF10) |
+| catalog-geo-service | 8002 | http://localhost:8002/docs | Donaciones, necesidades, búsqueda geoespacial (RF2–RF4) |
+| fulfillment-service | 8003 | http://localhost:8003/docs | Reservas, entregas, tareas automáticas (RF5, RF6, RF8) |
+| notification-service | 8004 | http://localhost:8004/docs | Notificaciones in-app (RF7) |
+| analytics-service | 8005 | http://localhost:8005/docs | Historial de eventos (RF10); indicadores en Sprints 7–8 |
+| RabbitMQ | 15672 | consola web (usuario y clave de `infra/.env`) | Eventos entre servicios |
+
+Cómo encajan: cada servicio tiene su base y su rol de base de datos; los cambios de estado viajan como
+eventos por RabbitMQ (auditoría, notificaciones e historial los consumen); la única llamada directa es
+fulfillment → catalog-geo para cambiar el estado de una donación (D-01). En desarrollo, Vite reparte cada
+prefijo de `/api` al servicio que lo atiende según `infra/rutas.json` (en Docker y Kubernetes lo hace el gateway).
+
+Comprobaciones:
+
+| Comando | Qué hace |
+| --- | --- |
+| `python scripts/probar.py` | Pruebas de los 5 servicios contra PostgreSQL real (83 pruebas) |
+| `python scripts/e2e.py` | Con el sistema levantado y recién sembrado: flujo completo con eventos reales (S5-21) |
+| `python scripts/contratos.py --revisar` | Falla si el código cambió y los contratos OpenAPI guardados no |
+
+Contratos: `docs/contratos/openapi/*.yaml` (uno por servicio, más la API interna de catalog) y
+`docs/contratos/eventos/` (catálogo de eventos y esquema JSON del sobre común).
+
+### Sprint 4 · Base transaccional
+
+Cuatro bases separadas, una por servicio, en un servidor PostgreSQL 16 con PostGIS:
+
+| Servicio | Base | Tablas |
+| --- | --- | --- |
+| `services/identity-service` | `redalimenta_identity` | rol, usuario, verificacion_usuario, registro_auditoria |
+| `services/catalog-geo-service` | `redalimenta_catalog` | categoria_alimento, ubicacion_geografica (PostGIS), donacion, necesidad_alimentaria |
+| `services/fulfillment-service` | `redalimenta_fulfillment` | reserva, entrega, confirmacion_entrega |
+| `services/notification-service` | `redalimenta_notification` | notificacion |
+
+Requisitos: Docker Desktop y Python 3.11+.
+
+1. Crear el archivo de contraseñas locales (no se sube al repositorio) y editarlo:
+
+   ```bash
+   copy infra\.env.example infra\.env
+   ```
+
+   (en macOS/Linux: `cp infra/.env.example infra/.env`)
+
+2. Levantar PostgreSQL con las cuatro bases:
+
+   ```bash
+   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+   ```
+
+3. Instalar dependencias:
+
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+4. Crear el esquema y cargar los datos semilla (Bogotá, Medellín y Cali), y comprobar la coherencia entre bases:
+
+   ```bash
+   python scripts/bd.py reiniciar
+   ```
+
+Otros comandos:
+
+| Comando | Qué hace |
+| --- | --- |
+| `python scripts/bd.py migrar` / `revertir` | Aplica o revierte todas las migraciones Alembic |
+| `python scripts/bd.py sembrar` | Inserta los datos semilla si las tablas están vacías |
+| `python scripts/bd.py verificar` | Conciliación entre bases (referencias y estados coherentes) |
+| `python scripts/bd.py diccionario` | Regenera `docs/modelo/diccionario-datos.md` desde las bases |
+| `python scripts/probar.py` | Pruebas de los servicios contra PostgreSQL real |
+
+Qué demuestran las pruebas: restricciones e integridad, transiciones de estado validadas por la base
+(triggers), permisos del rol de aplicación (sin DELETE; auditoría solo inserción), búsqueda geoespacial
+ordenada por metros con el puntaje D-08 verificado a mano, **20 conexiones reservando la misma donación
+con una sola reserva activa** (D-02), expiración en lote idempotente y migraciones que se aplican y
+revierten desde cero.
+
+Documentación del sprint: `docs/modelo/diccionario-datos.md`, `docs/modelo/normalizacion.md`,
+`docs/modelo/datos-semilla.md`, `docs/modelo/estados.md` y `docs/decisiones/README.md`.
+
+---
+
+# Prototipo de clase
+
+Primera versión, presentada antes del proyecto final. **Desde el Sprint 5 el frontend (`frontend/`) habla con
+los microservicios**, así que `demo.py` ya no muestra todas las pantallas. Para ver el prototipo exactamente como
+se presentó: `git checkout 1e6fec5` (y `git checkout -` para volver). Aplicación web geoespacial que conecta donantes de
 alimentos con receptores según ubicación, disponibilidad y urgencia, con trazabilidad de
 cada entrega.
 

@@ -1,0 +1,509 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · identity-service
+  description: Usuarios, autenticación JWT, verificación de cuentas y auditoría (RF1,
+    RF10).
+  version: 1.0.0
+paths:
+  /salud:
+    get:
+      tags:
+      - salud
+      summary: Salud
+      description: 'Preparación (readiness): el servicio y su base responden.'
+      operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /vivo:
+    get:
+      tags:
+      - salud
+      summary: Vivo
+      description: 'Vida (liveness): el proceso responde, aunque su base esté caída
+        (no conviene reiniciarlo por eso).'
+      operationId: vivo_vivo_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/auth/registro:
+    post:
+      tags:
+      - autenticación
+      summary: Registro
+      description: Crea una cuenta de donante o receptor; queda PENDIENTE de verificación.
+      operationId: registro_api_auth_registro_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Registro'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/login:
+    post:
+      tags:
+      - autenticación
+      summary: Login
+      operationId: login_api_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credenciales'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/refresh:
+    post:
+      tags:
+      - autenticación
+      summary: Refresh
+      description: Token nuevo con el estado de verificación vigente (D-06).
+      operationId: refresh_api_auth_refresh_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/auth/me:
+    get:
+      tags:
+      - autenticación
+      summary: Me
+      operationId: me_api_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/usuarios/me:
+    get:
+      tags:
+      - perfil
+      summary: Mi Perfil
+      operationId: mi_perfil_api_usuarios_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+    patch:
+      tags:
+      - perfil
+      summary: Actualizar Perfil
+      operationId: actualizar_perfil_api_usuarios_me_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiosPerfil'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/usuarios/me/desactivar:
+    post:
+      tags:
+      - perfil
+      summary: Desactivar Mi Cuenta
+      operationId: desactivar_mi_cuenta_api_usuarios_me_desactivar_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/usuarios/me/verificacion:
+    post:
+      tags:
+      - perfil
+      summary: Solicitar Verificacion
+      description: Vuelve a pedir verificación después de un rechazo.
+      operationId: solicitar_verificacion_api_usuarios_me_verificacion_post
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/usuarios/nombres:
+    get:
+      tags:
+      - perfil
+      summary: Nombres
+      description: Nombres públicos de usuarios (sin datos personales), para mostrar
+        contrapartes.
+      operationId: nombres_api_usuarios_nombres_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: ids
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Identificadores separados por coma
+          title: Ids
+        description: Identificadores separados por coma
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/usuarios:
+    get:
+      tags:
+      - administración
+      summary: Usuarios
+      operationId: usuarios_api_admin_usuarios_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: rol
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rol
+      - name: estado_verificacion
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Estado Verificacion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/usuarios/{id_usuario}:
+    get:
+      tags:
+      - administración
+      summary: Usuario
+      operationId: usuario_api_admin_usuarios__id_usuario__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_usuario
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Usuario
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/usuarios/{id_usuario}/desactivar:
+    post:
+      tags:
+      - administración
+      summary: Desactivar Usuario
+      operationId: desactivar_usuario_api_admin_usuarios__id_usuario__desactivar_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_usuario
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Usuario
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/verificaciones/{id_verificacion}:
+    post:
+      tags:
+      - administración
+      summary: Resolver
+      operationId: resolver_api_admin_verificaciones__id_verificacion__post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_verificacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Verificacion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decision'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/auditoria:
+    get:
+      tags:
+      - administración
+      summary: Auditoria
+      description: Quién cambió qué y cuándo (RF10).
+      operationId: auditoria_api_admin_auditoria_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: entidad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Entidad
+      - name: id_registro
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Registro
+      - name: id_usuario
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Usuario
+      - name: limite
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          default: 200
+          title: Limite
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    CambiosPerfil:
+      properties:
+        nombre:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 2
+          - type: 'null'
+          title: Nombre
+        telefono:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Telefono
+      type: object
+      title: CambiosPerfil
+    Credenciales:
+      properties:
+        correo:
+          type: string
+          title: Correo
+        contrasena:
+          type: string
+          title: Contrasena
+      type: object
+      required:
+      - correo
+      - contrasena
+      title: Credenciales
+    Decision:
+      properties:
+        decision:
+          type: string
+          title: Decision
+          description: APROBADA o RECHAZADA
+        observaciones:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Observaciones
+      type: object
+      required:
+      - decision
+      title: Decision
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    Registro:
+      properties:
+        nombre:
+          type: string
+          maxLength: 120
+          minLength: 2
+          title: Nombre
+        correo:
+          type: string
+          maxLength: 254
+          minLength: 5
+          title: Correo
+        contrasena:
+          type: string
+          maxLength: 128
+          minLength: 8
+          title: Contrasena
+        rol:
+          type: string
+          title: Rol
+          description: DONANTE o RECEPTOR
+        telefono:
+          anyOf:
+          - type: string
+            maxLength: 30
+          - type: 'null'
+          title: Telefono
+      type: object
+      required:
+      - nombre
+      - correo
+      - contrasena
+      - rol
+      title: Registro
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

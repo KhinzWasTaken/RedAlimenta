@@ -1,0 +1,49 @@
+# Tareas automáticas de fulfillment (S6-07, RF8): expirar reservas, vencer donaciones, avisar y conciliar.
+# Corren aquí y no dentro de las réplicas (TAREAS_SEGUNDOS=0), para que con dos réplicas no se dupliquen.
+# concurrencyPolicy: Forbid evita dos ejecuciones a la vez; y aunque coincidieran, cada efecto es una sola
+# sentencia (UPDATE … RETURNING, INSERT … ON CONFLICT) y se procesa una sola vez.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tareas-fulfillment
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 50
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 50
+      template:
+        metadata:
+          labels: {app: tareas-fulfillment}
+        spec:
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, runAsUser: 10001}
+          containers:
+            - name: tareas
+              image: redalimenta/fulfillment:local
+              imagePullPolicy: IfNotPresent
+              command: ["python", "-m", "cumplimiento.tareas"]
+              envFrom:
+                - configMapRef: {name: redalimenta-config}
+              env:
+                - name: APP_DB_PASSWORD
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: APP_DB_PASSWORD}}
+                - name: RABBITMQ_USER
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: RABBITMQ_USER}}
+                - name: RABBITMQ_PASSWORD
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: RABBITMQ_PASSWORD}}
+                - name: JWT_SECRETO
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: JWT_SECRETO}}
+                - name: TOKEN_INTERNO
+                  valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: TOKEN_INTERNO}}
+                - name: DATABASE_URL
+                  value: postgresql+psycopg://fulfillment_app:$(APP_DB_PASSWORD)@postgres:5432/redalimenta_fulfillment
+                - name: RABBITMQ_URL
+                  value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672/%2F
+              resources:
+                requests: {cpu: 50m, memory: 128Mi}
+                limits: {memory: 256Mi}

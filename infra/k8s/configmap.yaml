@@ -1,0 +1,16 @@
+# Configuración no secreta compartida por los servicios. Los secretos (claves de bases, RabbitMQ, JWT y
+# token interno) van en el Secret `redalimenta-secretos`, que scripts/k8s.py crea desde infra/.env.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redalimenta-config
+data:
+  CATALOG_URL: http://catalog:8000
+  MODO_DEMO: "1"
+  LOG_LEVEL: INFO
+  # Con varias réplicas las tareas automáticas no corren dentro del servicio: las hace el CronJob (S6-07)
+  TAREAS_SEGUNDOS: "0"
+  PLAZO_RESERVA_HORAS: "2"
+  AVISO_POR_VENCER_HORAS: "24"
+  # El resolver de nginx no usa los dominios de búsqueda de Kubernetes: nombre completo de los Services
+  DOMINIO_SERVICIOS: .redalimenta.svc.cluster.local

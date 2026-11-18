@@ -1,0 +1,184 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · notification-service
+  description: Bandeja de notificaciones in-app generada a partir de los eventos (RF7).
+  version: 1.0.0
+paths:
+  /salud:
+    get:
+      tags:
+      - salud
+      summary: Salud
+      description: 'Preparación (readiness): el servicio y su base responden.'
+      operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /vivo:
+    get:
+      tags:
+      - salud
+      summary: Vivo
+      description: 'Vida (liveness): el proceso responde, aunque su base esté caída
+        (no conviene reiniciarlo por eso).'
+      operationId: vivo_vivo_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/notificaciones:
+    get:
+      tags:
+      - notificaciones
+      summary: Bandeja
+      operationId: bandeja_api_notificaciones_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: archivadas
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Archivadas
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/notificaciones/no-leidas:
+    get:
+      tags:
+      - notificaciones
+      summary: No Leidas
+      operationId: no_leidas_api_notificaciones_no_leidas_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/notificaciones/leer-todas:
+    post:
+      tags:
+      - notificaciones
+      summary: Leer Todas
+      operationId: leer_todas_api_notificaciones_leer_todas_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/notificaciones/{id_notificacion}/leer:
+    post:
+      tags:
+      - notificaciones
+      summary: Leer
+      operationId: leer_api_notificaciones__id_notificacion__leer_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_notificacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Notificacion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/notificaciones/{id_notificacion}/archivar:
+    post:
+      tags:
+      - notificaciones
+      summary: Archivar
+      operationId: archivar_api_notificaciones__id_notificacion__archivar_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_notificacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Notificacion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

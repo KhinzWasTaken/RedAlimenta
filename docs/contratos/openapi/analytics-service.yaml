@@ -1,0 +1,500 @@
+openapi: 3.1.0
+info:
+  title: RedAlimenta · analytics-service
+  description: Historial inmutable de eventos y trazabilidad (RF10); indicadores,
+    cobertura y reportes CSV sobre el almacén de datos (RF9).
+  version: 1.0.0
+paths:
+  /salud:
+    get:
+      tags:
+      - salud
+      summary: Salud
+      description: 'Preparación (readiness): el servicio y su base responden.'
+      operationId: salud_salud_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /vivo:
+    get:
+      tags:
+      - salud
+      summary: Vivo
+      description: 'Vida (liveness): el proceso responde, aunque su base esté caída
+        (no conviene reiniciarlo por eso).'
+      operationId: vivo_vivo_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/historial/entidades/{entidad}:
+    get:
+      tags:
+      - historial
+      summary: Por Entidad
+      description: Reconstruye la vida de una donación, reserva o entrega en orden
+        cronológico.
+      operationId: por_entidad_api_historial_entidades__entidad__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: entidad
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Entidad
+      - name: id_entidad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Entidad
+      - name: tipo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tipo
+      - name: limite
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 5000
+          default: 500
+          title: Limite
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/historial/usuarios/{id_usuario}:
+    get:
+      tags:
+      - historial
+      summary: Por Usuario
+      operationId: por_usuario_api_historial_usuarios__id_usuario__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_usuario
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Usuario
+      - name: limite
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 5000
+          default: 500
+          title: Limite
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/indicadores/resumen:
+    get:
+      tags:
+      - indicadores y reportes
+      summary: Resumen
+      description: 'Totales del periodo: donaciones, reservas, entregas finalizadas,
+        volumen y proporción perdida (RF9).'
+      operationId: resumen_api_indicadores_resumen_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+          default: '2025-01-01'
+          title: Desde
+      - name: hasta
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Hasta
+      - name: departamento
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Departamento
+      - name: ciudad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ciudad
+      - name: id_categoria
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+      - name: incluir_sinteticos
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Incluir los datos sintéticos del almacén
+          default: true
+          title: Incluir Sinteticos
+        description: Incluir los datos sintéticos del almacén
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/indicadores/serie:
+    get:
+      tags:
+      - indicadores y reportes
+      summary: Serie
+      operationId: serie_api_indicadores_serie_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: indicador
+        in: query
+        required: false
+        schema:
+          type: string
+          default: donaciones_registradas
+          title: Indicador
+      - name: granularidad
+        in: query
+        required: false
+        schema:
+          type: string
+          default: mes
+          title: Granularidad
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+          default: '2025-01-01'
+          title: Desde
+      - name: hasta
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Hasta
+      - name: departamento
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Departamento
+      - name: ciudad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ciudad
+      - name: id_categoria
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+      - name: incluir_sinteticos
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Incluir los datos sintéticos del almacén
+          default: true
+          title: Incluir Sinteticos
+        description: Incluir los datos sintéticos del almacén
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/indicadores/cobertura:
+    get:
+      tags:
+      - indicadores y reportes
+      summary: Cobertura
+      description: Por departamento y ciudad, con coordenadas listas para el mapa.
+      operationId: cobertura_api_indicadores_cobertura_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+          default: '2025-01-01'
+          title: Desde
+      - name: hasta
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Hasta
+      - name: departamento
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Departamento
+      - name: ciudad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ciudad
+      - name: id_categoria
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+      - name: incluir_sinteticos
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Incluir los datos sintéticos del almacén
+          default: true
+          title: Incluir Sinteticos
+        description: Incluir los datos sintéticos del almacén
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/indicadores/filtros:
+    get:
+      tags:
+      - indicadores y reportes
+      summary: Opciones
+      operationId: opciones_api_indicadores_filtros_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/reportes/{reporte}.csv:
+    get:
+      tags:
+      - indicadores y reportes
+      summary: Exportar
+      description: 'Exporta a CSV: serie, cobertura, volumen o resumen, con los mismos
+        filtros de la pantalla.'
+      operationId: exportar_api_reportes__reporte__csv_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: reporte
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Reporte
+      - name: indicador
+        in: query
+        required: false
+        schema:
+          type: string
+          default: donaciones_registradas
+          title: Indicador
+      - name: granularidad
+        in: query
+        required: false
+        schema:
+          type: string
+          default: mes
+          title: Granularidad
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+          default: '2025-01-01'
+          title: Desde
+      - name: hasta
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Hasta
+      - name: departamento
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Departamento
+      - name: ciudad
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ciudad
+      - name: id_categoria
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+      - name: incluir_sinteticos
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Incluir los datos sintéticos del almacén
+          default: true
+          title: Incluir Sinteticos
+        description: Incluir los datos sintéticos del almacén
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

@@ -1,0 +1,31 @@
+# Migraciones de las cinco bases y datos semilla (si están vacías). scripts/k8s.py lo vuelve a crear en cada
+# despliegue; los servicios esperan a que la base responda (readinessProbe /salud).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migraciones
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels: {app: migraciones}
+    spec:
+      restartPolicy: OnFailure
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: herramientas
+          image: redalimenta/herramientas:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: PGHOST, value: postgres}
+            - {name: POSTGRES_PORT, value: "5432"}
+            - {name: POSTGRES_USER, value: postgres}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: POSTGRES_PASSWORD}}
+            - name: APP_DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: redalimenta-secretos, key: APP_DB_PASSWORD}}
+            - {name: MODO, value: migrar-y-sembrar}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}

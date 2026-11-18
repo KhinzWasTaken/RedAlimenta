@@ -6,7 +6,10 @@ import { MisDonaciones, Publicar } from './pantallas/Donante'
 import { Buscar, MisReservas } from './pantallas/Receptor'
 import Entregas from './pantallas/Entregas'
 import Notificaciones from './pantallas/Notificaciones'
-import { Auditoria, Cuentas } from './pantallas/Admin'
+import { Auditoria, Categorias, Cuentas } from './pantallas/Admin'
+import Necesidades from './pantallas/Necesidades'
+import Tablero from './pantallas/Tablero'
+import Trazabilidad from './pantallas/Trazabilidad'
 
 const PESTANAS = {
   DONANTE: [
@@ -17,13 +20,17 @@ const PESTANAS = {
   ],
   RECEPTOR: [
     ['buscar', 'Buscar', '🗺️'],
+    ['necesidades', 'Necesidades', '📝'],
     ['reservas', 'Mis reservas', '📋'],
     ['entregas', 'Entregas', '🤝'],
     ['avisos', 'Avisos', '🔔'],
   ],
   ADMINISTRADOR: [
+    ['tablero', 'Tablero', '📊'],
     ['cuentas', 'Cuentas', '✅'],
+    ['categorias', 'Categorías', '🏷️'],
     ['auditoria', 'Auditoría', '📜'],
+    ['trazabilidad', 'Trazabilidad', '🔎'],
     ['avisos', 'Avisos', '🔔'],
   ],
 }
@@ -127,6 +134,10 @@ export default function App() {
         {actual === 'avisos' && <Notificaciones onCambio={contador.recargar} />}
         {actual === 'cuentas' && <Cuentas />}
         {actual === 'auditoria' && <Auditoria />}
+        {actual === 'categorias' && <Categorias />}
+        {actual === 'necesidades' && <Necesidades />}
+        {actual === 'tablero' && <Tablero />}
+        {actual === 'trazabilidad' && <Trazabilidad />}
       </main>
 
       <nav className="pestanas">

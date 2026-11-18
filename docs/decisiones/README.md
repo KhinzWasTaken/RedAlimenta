@@ -16,3 +16,18 @@ aplicación (no microservicios) con módulos separados y SQLite.
 | D-08 | Puntaje = 0,40 urgencia + 0,35 cercanía + 0,25 proximidad del vencimiento, normalizados 0–1; pesos en configuración. | Ver `catalogo/busqueda.py`. Urgencia: mayor nivel de las necesidades abiertas del receptor en la categoría de la donación (BAJA 0,25, MEDIA 0,5, ALTA 0,75, CRITICA 1; 0 si no hay). Cercanía: `1 − min(d / radio, 1)`. Vencimiento: `1 − min(horas_restantes / 168, 1)`. Distancia con Haversine. |
 | D-09 | Plazo de confirmación de reserva: 2 horas. Aviso de "por vencer": 24 horas antes. Configurables. | Variables `REDALIMENTA_PLAZO_RESERVA_HORAS` y `REDALIMENTA_AVISO_VENCER_HORAS`. Un planificador interno corre las tareas cada 60 s; el botón de demo "forzar expiración" adelanta el plazo y ejecuta la tarea. |
 | D-10 | Dejar `Usuario` como está (sin `tipo_participante`). | Sin cambios. |
+
+## Cómo se aplican desde el Sprint 4 (proyecto final, `services/`)
+
+| ID | Aplicación en las bases PostgreSQL |
+| --- | --- |
+| D-01 | `catalogo.repositorio.transicionar_donacion` es el único punto que cambia `estado_donacion`, y el trigger `trg_donacion_validar` rechaza en la base cualquier transición ilegal. |
+| D-02 | Índice único parcial `ux_reserva_activa` en `redalimenta_fulfillment.reserva`; prueba con 20 conexiones simultáneas. La compensación (cancelar si catalog rechaza) se implementa con la API en el Sprint 5. |
+| D-03 | Tipos `ENUM` de PostgreSQL por cada lista de estados, más triggers que validan las transiciones. |
+| D-04 | `registro_auditoria` con trigger que bloquea UPDATE/DELETE y REVOKE de esos permisos al rol `identity_app`. |
+| D-05 | `reserva` sin cantidad; la necesidad solo entra en la búsqueda y el puntaje. |
+| D-06 | Una base por servicio y sin claves foráneas entre bases; la coherencia se comprueba con `scripts/bd.py verificar`. |
+| D-07 | `buscar_donaciones(lat, lon)` o `buscar_donaciones(id_necesidad=…)` con una necesidad ABIERTA del receptor. |
+| D-08 | Puntaje calculado en SQL con ST_Distance; pesos por variables de entorno (`catalogo/config.py`). |
+| D-09 | `PLAZO_RESERVA_HORAS` (2) y `AVISO_POR_VENCER_HORAS` (24) en `cumplimiento/config.py`. |
+| D-10 | Sin cambios en `usuario`. |
