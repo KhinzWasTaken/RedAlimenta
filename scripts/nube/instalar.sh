@@ -6,7 +6,7 @@
 # Variables opcionales:
 #   RAMA        rama del repositorio (main)
 #   DOMINIO     nombre público; por defecto <ip-publica>.sslip.io (no hay que comprar dominio)
-#   CLAVE_DEMO  contraseña de los usuarios de demostración; por defecto una al azar
+#   CLAVE_DEMO  contraseña de los usuarios de demostración (demo123). Se aplica también si ya existían
 #   GITHUB_TOKEN  token de solo lectura si el repositorio es privado (no se guarda en el servidor)
 #
 # Es idempotente: si se vuelve a ejecutar, trae la última versión y reconstruye sin borrar los datos.
@@ -62,9 +62,8 @@ if [ ! -f "$ENV" ]; then
   cp "$DIR/infra/.env.example" "$ENV"
   for clave in POSTGRES_PASSWORD APP_DB_PASSWORD RABBITMQ_PASSWORD; do fijar "$clave" "$(openssl rand -hex 16)"; done
   for clave in JWT_SECRETO TOKEN_INTERNO; do fijar "$clave" "$(openssl rand -hex 32)"; done
-  fijar CLAVE_DEMO "${CLAVE_DEMO:-$(openssl rand -base64 12 | tr -dc 'A-Za-z0-9' | head -c 10)}"
 fi
-[ -n "${CLAVE_DEMO:-}" ] && fijar CLAVE_DEMO "$CLAVE_DEMO"
+fijar CLAVE_DEMO "${CLAVE_DEMO:-demo123}"
 fijar DOMINIO "$DOMINIO"
 fijar GATEWAY_PORT "127.0.0.1:8080"
 chmod 600 "$ENV"
@@ -73,6 +72,23 @@ paso "Construir y levantar (la primera vez tarda entre 5 y 15 minutos)"
 cd "$DIR"
 docker compose -f infra/docker-compose.yml -f infra/docker-compose.nube.yml --env-file infra/.env \
   --profile app up -d --build --wait --remove-orphans
+
+paso "Contraseña de los usuarios de demostración"
+# Los datos semilla solo se cargan con la base vacía; esto alinea las cuentas semilla con CLAVE_DEMO en cada despliegue
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.nube.yml --env-file infra/.env --profile app \
+  exec -T -e CLAVE="$(grep '^CLAVE_DEMO=' "$ENV" | cut -d= -f2)" identity python - <<'PY'
+import os
+from sqlalchemy import text
+from identidad.db import sesiones
+from identidad.repositorio import hash_contrasena
+from identidad.semilla import USUARIOS
+with sesiones()() as db:
+    for fila in USUARIOS:
+        db.execute(text("UPDATE usuario SET contrasena_hash = :h WHERE lower(correo_electronico) = :c"),
+                   {"h": hash_contrasena(os.environ["CLAVE"]), "c": fila[2]})
+    db.commit()
+print(f"{len(USUARIOS)} cuentas de demostración actualizadas")
+PY
 
 paso "Comprobar HTTPS"
 for _ in $(seq 1 30); do
