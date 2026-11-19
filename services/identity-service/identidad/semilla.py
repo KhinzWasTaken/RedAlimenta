@@ -2,15 +2,18 @@
 
 Los identificadores son fijos porque catalog-geo, fulfillment y notification los usan
 (D-06: sin claves foráneas entre bases). La tabla de referencia está en docs/modelo/datos-semilla.md.
-Contraseña de todos: demo123 (solo para demostración; no protege datos reales).
+Contraseña de todos: demo123 (solo para demostración; no protege datos reales). En un servidor público se
+cambia con la variable CLAVE_DEMO (scripts/nube/instalar.sh la genera al azar).
 """
+import os
+
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .modelos import RegistroAuditoria, Usuario, VerificacionUsuario
 from .repositorio import hash_contrasena
 
-CONTRASENA_DEMO = "demo123"
+CONTRASENA_DEMO = os.environ.get("CLAVE_DEMO") or "demo123"
 ID_ADMIN = 1
 
 # id, nombre, correo, rol, estado de verificación inicial, ciudad (solo informativa)

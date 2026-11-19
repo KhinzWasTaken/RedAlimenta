@@ -78,6 +78,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD}
       MODO: ${MODO_HERRAMIENTAS:-migrar-y-sembrar}
+      CLAVE_DEMO: ${CLAVE_DEMO:-demo123}  # contraseña de los usuarios semilla
 
   identity:
     <<: *servicio

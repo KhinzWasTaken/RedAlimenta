@@ -1,0 +1,34 @@
+# Despliegue en un servidor en la nube (Azure u otro), sobre infra/docker-compose.yml:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.nube.yml --env-file infra/.env --profile app up -d --build
+#
+# - Caddy es la única entrada pública (80 y 443) y obtiene el certificado HTTPS solo.
+# - El gateway queda en 127.0.0.1 (GATEWAY_PORT=127.0.0.1:8080 en infra/.env); PostgreSQL y RabbitMQ ya
+#   escuchan solo en 127.0.0.1.
+# - Todo se reinicia solo si el servidor se reinicia.
+# Lo prepara scripts/nube/instalar.sh.
+services:
+  postgres:
+    restart: unless-stopped
+
+  rabbitmq:
+    restart: unless-stopped
+
+  caddy:
+    profiles: ["app"]
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      gateway: {condition: service_healthy}
+    environment:
+      DOMINIO: ${DOMINIO:?Define DOMINIO en infra/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - datos-caddy:/data
+      - config-caddy:/config
+
+volumes:
+  datos-caddy:
+  config-caddy:

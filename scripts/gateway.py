@@ -37,6 +37,14 @@ server {{
     server_name _;
     access_log /dev/stdout redalimenta;
 
+    # Detrás de un proxy de la red privada (Caddy en la nube, Ingress en Kubernetes): IP real del cliente,
+    # para que el límite de intentos de inicio de sesión sea por persona y no compartido
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
     resolver ${{NGINX_LOCAL_RESOLVERS}} valid=10s ipv6=off;
     client_max_body_size 1m;
 
@@ -68,7 +76,14 @@ server {{
         return 404 '{{"detail":"Recurso no encontrado"}}';
     }}
 
-    location ~ ^/api/auth/(login|registro)$ {{
+    # Coincidencia exacta (=): tiene prioridad sobre el prefijo ^~ /api/auth; una expresión regular no la tendría
+    location = /api/auth/login {{
+        limit_req zone=autenticacion burst=20 nodelay;
+        set $destino http://identity${{DOMINIO_SERVICIOS}}:8000;
+        proxy_pass $destino;
+    }}
+
+    location = /api/auth/registro {{
         limit_req zone=autenticacion burst=20 nodelay;
         set $destino http://identity${{DOMINIO_SERVICIOS}}:8000;
         proxy_pass $destino;

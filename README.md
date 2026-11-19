@@ -17,6 +17,17 @@ Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 | 7 | Almacén de datos y ETL | ✅ Listo |
 | 8 | Indicadores, tablero, trazabilidad, seguridad y documentación final | ✅ Listo |
 
+### Publicar en internet (Azure for Students)
+
+En Azure Cloud Shell (navegador):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/main/scripts/nube/azure.sh | bash
+```
+
+Crea la máquina, instala todo con HTTPS y muestra el enlace y la contraseña de la demostración. Guía completa,
+costos y cómo apagarla: `docs/manuales/despliegue-azure.md`.
+
 ### Probar en un PC con Windows
 
 En PowerShell, desde la raíz del repositorio:
@@ -37,6 +48,7 @@ sin perder datos. Después: **http://localhost:8080**.
 | Usar la aplicación (donante, receptor, administrador) | `docs/manuales/usuario.md` |
 | Mantener y extender el sistema | `docs/manuales/tecnico.md` |
 | Desplegar en Kubernetes local | `docs/manuales/despliegue-kubernetes.md` |
+| Publicar en Azure con HTTPS | `docs/manuales/despliegue-azure.md` |
 | Presentar la demostración (8 minutos, cuatro actores) | `docs/guion-demo.md` |
 | Arquitectura y bases distribuidas | `docs/arquitectura/` |
 | Modelo de datos, estados y diccionario | `docs/modelo/` |
