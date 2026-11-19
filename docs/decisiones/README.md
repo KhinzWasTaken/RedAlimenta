@@ -46,3 +46,19 @@ todos. El receptor recibe un aviso al publicarse la oferta.
 
 **Compatibilidad con D-05:** la reserva sigue cubriendo la donación completa y no se descuenta cantidad de la
 necesidad; el receptor la cierra cuando queda cubierta.
+
+## D-12 · Chat entre donante y receptor (agregada el 19 de noviembre de 2026)
+
+**Problema:** donante y receptor no tenían cómo pactar la hora y el lugar de entrega ni resolver dudas dentro de
+la aplicación.
+
+**Decisión:** una conversación por (donación, receptor) en notification-service (tablas `conversacion` y
+`mensaje`). Se abre sola por eventos cuando hay contraparte: el receptor reserva una donación publicada
+(RESERVA_CREADA) o el donante ofrece una donación para la solicitud de un receptor (DONACION_CREADA con
+`id_receptor`, D-11). Se cierra cuando la reserva de ese receptor se cancela o expira, o cuando la donación se
+entrega, se cancela o vence; cerrada queda de solo lectura y se reabre si el mismo receptor vuelve a reservar.
+
+**Reglas:** solo escriben y leen los dos participantes (el administrador no lee los chats); los mensajes son de
+solo inserción (trigger + permisos), de 1 a 1.000 caracteres, para que lo pactado quede como se dijo. Los mensajes
+**no se publican como eventos**: no llegan a la auditoría ni al almacén, para no copiar conversaciones privadas.
+El frontend consulta cada 3 segundos (sin WebSocket), suficiente para coordinar una entrega.

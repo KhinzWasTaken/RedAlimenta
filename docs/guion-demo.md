@@ -38,7 +38,7 @@ otra terminal en la raíz del repositorio. Contraseña de todos los usuarios: `d
 | 5:30 | Administrador | *Trazabilidad*: donación con el número de las Lentejas → auditoría y eventos con su identificador de correlación | "Reconstruimos quién cambió qué y cuándo; la auditoría es de solo inserción." |
 | 6:15 | Administrador | *Tablero*: tarjetas, serie por mes (pico tras el terremoto del 10 de agosto), mapa de cobertura, filtro por Antioquia, CSV | "Indicadores del RF9 sobre el almacén en estrella; 50.000 donaciones sintéticas marcadas como tales; el CSV trae los mismos números." |
 | 7:15 | — | Terminal: `python scripts/resiliencia.py` (catalog caído → 503 sin reservas huérfanas) | "Diseñado para fallar bien." |
-| 7:45 | — | Cierre: `python scripts/trazabilidad.py` (61 pruebas citadas, todas existen) y `docs/trazabilidad.md` | "Cada requerimiento y regla apunta a una prueba que pasa." |
+| 7:45 | — | Cierre: `python scripts/trazabilidad.py` (65 pruebas citadas, todas existen) y `docs/trazabilidad.md` | "Cada requerimiento y regla apunta a una prueba que pasa." |
 
 ## Si algo falla en vivo
 

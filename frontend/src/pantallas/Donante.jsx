@@ -160,7 +160,7 @@ export function Publicar({ onPublicada, oferta, onQuitarOferta }) {
   )
 }
 
-export function MisDonaciones() {
+export function MisDonaciones({ onChat }) {
   const donaciones = useDatos('/donaciones/mias', 8000)
   const reservas = useDatos('/reservas/mias', 8000)
   const recargar = async () => {
@@ -200,6 +200,11 @@ export function MisDonaciones() {
               Vence {fecha(d.fecha_vencimiento)} · {d.ubicacion.direccion_referencia || 'Sin dirección'}
             </p>
             {d.necesidad && <p className="pequeno">🙋 Para la solicitud «{d.necesidad}»</p>}
+            {d.necesidad && !r && ['DISPONIBLE', 'RESERVADA'].includes(d.estado_donacion) && (
+              <button className="secundario boton-chat" onClick={() => onChat?.(d.id_donacion)}>
+                💬 Chat con quien la pidió
+              </button>
+            )}
             {r && (
               <div className="reserva-en-donacion">
                 <p>
@@ -227,6 +232,9 @@ export function MisDonaciones() {
                   </>
                 )}
                 {r.estado_reserva === 'CONFIRMADA' && <p className="pequeno">Confirma la entrega en la pestaña Entregas.</p>}
+                <button className="secundario boton-chat" onClick={() => onChat?.(d.id_donacion)}>
+                  💬 Chat con {r.receptor}
+                </button>
               </div>
             )}
             {d.estado_donacion === 'DISPONIBLE' && (

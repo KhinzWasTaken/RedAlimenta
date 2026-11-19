@@ -15,6 +15,8 @@ RedAlimenta, plataforma de conexión para donaciones de alimentos. Contacto para
 - **Operación:** donaciones y necesidades publicadas, con su dirección de referencia y punto en el mapa;
   reservas, entregas y confirmaciones.
 - **Registro de actividad:** quién hizo cada cambio y cuándo (auditoría), sin contenidos personales adicionales.
+- **Mensajes del chat:** lo que escriben el donante y el receptor de una donación para coordinar la entrega. Solo
+  los ven ellos dos; no se copian a la auditoría ni a los indicadores. Se recomienda no compartir datos sensibles.
 
 No se recogen datos sensibles ni datos de niños, niñas o adolescentes.
 

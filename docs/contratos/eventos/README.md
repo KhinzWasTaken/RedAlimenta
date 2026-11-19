@@ -17,6 +17,9 @@ Los servicios publican **después** de confirmar su transacción; los consumidor
 
 En negrita, los tres que nombra el documento de los Sprints 2 y 3; el resto completa el catálogo propuesto en el plan.
 Todos los consumen auditoría y analytics; la columna "Notifica a" dice quién recibe aviso in-app.
+notification-service además abre el chat donante–receptor (D-12) con RESERVA_CREADA y con DONACION_CREADA que trae
+`id_receptor`, y lo cierra con RESERVA_CANCELADA, RESERVA_EXPIRADA, DONACION_ENTREGADA, DONACION_CANCELADA y
+DONACION_VENCIDA. Los mensajes del chat no son eventos.
 
 | Tipo | Publica | Entidad · transición | `datos` | Notifica a |
 | --- | --- | --- | --- | --- |

@@ -13,6 +13,7 @@ automáticas se repiten con `python scripts/revisar_seguridad.py --bases`.
 | Teléfono | `usuario` | El propio usuario y el administrador | Contacto para la verificación |
 | Contraseña | `usuario.contrasena_hash` (PBKDF2-SHA256 con sal, 120.000 iteraciones) | Nadie (no se puede recuperar) | Autenticación |
 | Dirección de referencia y coordenadas del punto de recogida | `redalimenta_catalog` | Receptores que buscan donaciones | Recoger el alimento |
+| Mensajes del chat (D-12) | `redalimenta_notification.mensaje` | Solo el donante y el receptor de la conversación (ni el administrador) | Pactar la entrega; no se publican como eventos |
 
 Ningún dato sensible (salud, origen étnico, etc.) se recoge. No hay datos de menores.
 
@@ -40,6 +41,7 @@ Ningún dato sensible (salud, origen étnico, etc.) se recoge. No hay datos de m
 | `GET /api/usuarios/nombres` da el nombre de cualquier usuario a cualquier usuario autenticado | Medio: el nombre de una persona natural es dato personal | Se acepta para la finalidad de coordinar entregas y solo expone el nombre (nunca correo ni teléfono). Mejora: limitarlo a las contrapartes de reservas propias |
 | El tráfico interno entre contenedores va por HTTP sin cifrar | Medio en un clúster compartido | Aceptado en el entorno local; en producción, TLS en el Ingress y malla de servicios o NetworkPolicy |
 | No hay recuperación de contraseña ni borrado de cuenta a pedido | La ley da derecho a suprimir datos | Desactivar la cuenta deja de mostrarla; la supresión total requiere un procedimiento manual del administrador (ver política) |
+| Los mensajes del chat no se pueden borrar (solo inserción) | Un usuario podría escribir datos personales de más | Se avisa en la política; el texto se limita a 1.000 caracteres y solo lo ven las dos partes. Mejora: borrado a pedido por el administrador |
 | El almacén y la auditoría guardan identificadores de usuario para siempre | Trazabilidad frente a derecho de supresión | La auditoría es obligación del RF10; tras una supresión se conserva solo el identificador sin datos que lo vuelvan identificable |
 
 ## 4. Cómo repetir la revisión

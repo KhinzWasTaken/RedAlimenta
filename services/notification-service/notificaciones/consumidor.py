@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from redalimenta_comun.eventos import Consumidor, Evento, primera_vez
 
+from . import chat
 from . import repositorio as repo
 from .db import sesiones
 
@@ -80,15 +81,20 @@ def destinatarios(e: Evento) -> list[tuple[int, str]]:
     return []
 
 
+ABREN_O_CIERRAN_CHAT = {"RESERVA_CREADA", "DONACION_CREADA", "RESERVA_CANCELADA", "RESERVA_EXPIRADA",
+                        "DONACION_ENTREGADA", "DONACION_CANCELADA", "DONACION_VENCIDA"}
+
+
 def procesar(evento: Evento) -> int:
     pares = [(u, m) for u, m in destinatarios(evento) if u]
-    if not pares:
+    if not pares and evento.tipo not in ABREN_O_CIERRAN_CHAT:
         return 0
     with sesiones()() as db:
-        if not primera_vez(db, evento, COLA):  # S6-05: reentrega del broker → sin notificaciones repetidas
+        if not primera_vez(db, evento, COLA):  # S6-05: reentrega del broker → sin efectos repetidos
             return 0
         for id_usuario, mensaje in pares:
             repo.crear_notificacion(db, id_usuario, evento.tipo, mensaje)
+        chat.aplicar_evento(db, evento.tipo, evento.id_entidad, evento.datos)  # D-12
         db.commit()
     return len(pares)
 

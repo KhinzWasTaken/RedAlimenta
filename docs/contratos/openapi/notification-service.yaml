@@ -1,7 +1,8 @@
 openapi: 3.1.0
 info:
   title: RedAlimenta · notification-service
-  description: Bandeja de notificaciones in-app generada a partir de los eventos (RF7).
+  description: Bandeja de notificaciones in-app generada a partir de los eventos (RF7)
+    y chat entre donante y receptor (D-12).
   version: 1.0.0
 paths:
   /salud:
@@ -141,6 +142,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/conversaciones:
+    get:
+      tags:
+      - chat (D-12)
+      summary: Conversaciones
+      description: Las conversaciones del usuario (como donante o receptor), con su
+        último mensaje y no leídos.
+      operationId: conversaciones_api_conversaciones_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/conversaciones/no-leidos:
+    get:
+      tags:
+      - chat (D-12)
+      summary: Mensajes No Leidos
+      operationId: mensajes_no_leidos_api_conversaciones_no_leidos_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /api/conversaciones/{id_conversacion}/mensajes:
+    get:
+      tags:
+      - chat (D-12)
+      summary: Mensajes
+      operationId: mensajes_api_conversaciones__id_conversacion__mensajes_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_conversacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Conversacion
+      - name: despues_de
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: Despues De
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - chat (D-12)
+      summary: Enviar
+      operationId: enviar_api_conversaciones__id_conversacion__mensajes_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_conversacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Conversacion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevoMensaje'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/conversaciones/{id_conversacion}/leer:
+    post:
+      tags:
+      - chat (D-12)
+      summary: Leer Conversacion
+      operationId: leer_conversacion_api_conversaciones__id_conversacion__leer_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: id_conversacion
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id Conversacion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     HTTPValidationError:
@@ -152,6 +276,17 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    NuevoMensaje:
+      properties:
+        texto:
+          type: string
+          maxLength: 1000
+          minLength: 1
+          title: Texto
+      type: object
+      required:
+      - texto
+      title: NuevoMensaje
     ValidationError:
       properties:
         loc:

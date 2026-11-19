@@ -18,7 +18,7 @@ function Prioridad({ p, nivel }) {
   )
 }
 
-export function Buscar({ onReservada }) {
+export function Buscar({ onReservada, onChat }) {
   const categorias = useDatos('/categorias')
   const necesidades = useDatos('/necesidades/mias')
   const [referencia, setReferencia] = useState('') // id_necesidad o 'mapa'
@@ -179,9 +179,16 @@ export function Buscar({ onReservada }) {
                 Vence {fecha(d.fecha_vencimiento)} · {d.ubicacion.direccion_referencia}
               </p>
               <Prioridad p={d.prioridad} nivel={d.nivel_urgencia} />
-              <button disabled={ocupado} onClick={() => reservar(d)}>
-                Reservar
-              </button>
+              <div className="fila-botones">
+                <button disabled={ocupado} onClick={() => reservar(d)}>
+                  Reservar
+                </button>
+                {d.para_mi && (
+                  <button className="secundario" onClick={() => onChat?.(d.id_donacion)}>
+                    💬 Preguntar al donante
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ol>
@@ -191,7 +198,7 @@ export function Buscar({ onReservada }) {
   )
 }
 
-export function MisReservas() {
+export function MisReservas({ onChat }) {
   const reservas = useDatos('/reservas/mias', 5000)
   const { ocupado, mensaje, setMensaje, ejecutar } = useAccion(reservas.recargar)
   const post = (ruta) => () => api(ruta, { method: 'POST' })
@@ -242,6 +249,11 @@ export function MisReservas() {
           )}
           {r.estado_reserva === 'CONFIRMADA' && (
             <p className="pequeno">El donante confirmó. Confirma la entrega en la pestaña Entregas.</p>
+          )}
+          {['PENDIENTE', 'CONFIRMADA'].includes(r.estado_reserva) && (
+            <button className="secundario boton-chat" onClick={() => onChat?.(r.donacion.id_donacion)}>
+              💬 Chat con {r.donacion.donante}
+            </button>
           )}
         </article>
       ))}

@@ -353,6 +353,7 @@ Restricciones:
 
 | Tipo | Valores |
 | --- | --- |
+| `estado_conversacion` | ABIERTA, CERRADA |
 | `estado_notificacion` | NO_LEIDA, LEIDA, ARCHIVADA |
 
 ### `notificacion`
@@ -396,6 +397,62 @@ Idempotencia del consumidor: un id_evento se procesa una sola vez.
 Restricciones:
 
 - **PK** `pk_evento_procesado`: `PRIMARY KEY (id_evento)`
+
+### `conversacion`
+
+Chat donante–receptor de una donación. Se abre cuando el receptor la reserva o el donante la ofrece para su solicitud; se cierra cuando la reserva o la donación terminan.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_conversacion` | bigint | no | nextval('conversacion_id_conversacion_seq'::regclass) | Identificador. |
+| `id_donacion` | bigint | no |  | Donación de la que se habla (catalog-geo; sin FK entre bases, D-06). |
+| `id_donante` | bigint | no |  | Donante (identity-service). |
+| `id_receptor` | bigint | no |  | Receptor (identity-service). |
+| `nombre_alimento` | character varying(120) | no |  | Alimento, para mostrar la conversación. |
+| `origen` | character varying(20) | no |  | RESERVA (el receptor la reservó) u OFERTA (el donante la ofreció a su solicitud). |
+| `estado_conversacion` | estado_conversacion | no | 'ABIERTA'::estado_conversacion | ABIERTA (se puede escribir) o CERRADA (solo lectura). |
+| `fecha_creacion` | timestamp with time zone | no | now() | Cuándo se abrió. |
+| `fecha_cierre` | timestamp with time zone | sí |  | Cuándo se cerró. |
+| `ultimo_leido_donante` | bigint | no | '0'::bigint | Último id_mensaje que leyó el donante (para contar no leídos). |
+| `ultimo_leido_receptor` | bigint | no | '0'::bigint | Último id_mensaje que leyó el receptor. |
+
+Restricciones:
+
+- **CHECK** `ck_conversacion_cierre_fechado`: `CHECK (((estado_conversacion = 'CERRADA'::estado_conversacion) = (fecha_cierre IS NOT NULL)))`
+- **CHECK** `ck_conversacion_participantes_distintos`: `CHECK ((id_donante <> id_receptor))`
+- **PK** `pk_conversacion`: `PRIMARY KEY (id_conversacion)`
+- **UNIQUE** `uq_conversacion_id_donacion_id_receptor`: `UNIQUE (id_donacion, id_receptor)`
+
+Índices:
+
+- `ix_conversacion_donante`: `btree (id_donante)`
+- `ix_conversacion_receptor`: `btree (id_receptor)`
+
+### `mensaje`
+
+Mensajes de cada conversación; no se modifican ni se borran.
+
+| Columna | Tipo | Nulo | Por defecto | Descripción |
+| --- | --- | --- | --- | --- |
+| `id_mensaje` | bigint | no | nextval('mensaje_id_mensaje_seq'::regclass) | Identificador (orden de envío). |
+| `id_conversacion` | bigint | no |  | Conversación a la que pertenece. |
+| `id_autor` | bigint | no |  | Quién lo escribió: el donante o el receptor. |
+| `texto` | text | no |  | Contenido, de 1 a 1.000 caracteres. |
+| `fecha_envio` | timestamp with time zone | no | now() | Cuándo se envió. |
+
+Restricciones:
+
+- **CHECK** `ck_mensaje_texto_valido`: `CHECK (((length(TRIM(BOTH FROM texto)) >= 1) AND (length(TRIM(BOTH FROM texto)) <= 1000)))`
+- **FK** `fk_mensaje_id_conversacion_conversacion`: `FOREIGN KEY (id_conversacion) REFERENCES conversacion(id_conversacion)`
+- **PK** `pk_mensaje`: `PRIMARY KEY (id_mensaje)`
+
+Índices:
+
+- `ix_mensaje_conversacion`: `btree (id_conversacion, id_mensaje)`
+
+Triggers:
+
+- `trg_mensaje_validar` → `fn_mensaje_validar()`
 
 ## Base `redalimenta_analytics` (analytics-service)
 

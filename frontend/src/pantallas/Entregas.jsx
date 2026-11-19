@@ -1,7 +1,7 @@
 import { api, fecha } from '../api'
 import { Aviso, Estado, useAccion, useDatos } from '../componentes/Comunes'
 
-export default function Entregas() {
+export default function Entregas({ onChat }) {
   const reservas = useDatos('/reservas/mias', 5000)
   const { ocupado, mensaje, setMensaje, ejecutar } = useAccion(reservas.recargar)
   const conEntrega = reservas.datos?.filter((r) => r.entrega) ?? []
@@ -78,6 +78,11 @@ export default function Entregas() {
               </div>
             )}
             {abierta && e.yo_confirme && <p className="pequeno">Ya confirmaste; esperando a la otra parte.</p>}
+            {abierta && (
+              <button className="secundario boton-chat" onClick={() => onChat?.(r.donacion.id_donacion)}>
+                💬 Chat para pactar la entrega
+              </button>
+            )}
           </article>
         )
       })}
