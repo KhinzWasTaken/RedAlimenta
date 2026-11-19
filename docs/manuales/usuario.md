@@ -18,9 +18,11 @@ entrar.
 
 | Pestaña | Para qué |
 | --- | --- |
+| **Solicitudes** | Lo que piden los receptores, en mapa y lista, la más urgente primero; filtra por ciudad y categoría. **Ofrecer donación** abre Publicar con los datos de la solicitud: la donación queda apartada para ese receptor mientras su solicitud siga abierta. |
 | **Publicar** | Elige la ciudad, toca el mapa donde se recoge el alimento y completa qué es, la categoría, la cantidad y unidad, hasta cuándo es apto (hora de Colombia), una dirección de referencia y las condiciones de recogida. |
 | **Mis donaciones** | Ves cada donación con su estado. Mientras está **DISPONIBLE** puedes cancelarla. Cuando un receptor la reserva, aparece **Confirmar reserva** o **Rechazar**; tienes **2 horas** para confirmar o la reserva expira y la donación vuelve a estar disponible. |
 | **Entregas** | Cuando entregues el alimento, pulsa **Confirmar entrega** (o **Reportar incidencia** si algo salió mal). La donación queda ENTREGADA cuando confirman tú y el receptor. |
+| **Mensajes** | Chat con cada receptor que reservó una de tus donaciones o al que le ofreciste una. Úsalo para pactar la hora y el lugar de entrega. También se abre con **💬 Chat** en Mis donaciones y Entregas. |
 | **Avisos** | Notificaciones de reservas, entregas y vencimientos. Tócalas para marcarlas como leídas. |
 
 ## Receptor
@@ -28,9 +30,10 @@ entrar.
 | Pestaña | Para qué |
 | --- | --- |
 | **Buscar** | Elige como punto de búsqueda una de tus necesidades (o toca el mapa). Verás las donaciones disponibles en el mapa y en la lista, con su distancia y un **puntaje de prioridad** que combina la urgencia de tu necesidad (40 %), la cercanía (35 %) y lo pronto que vence (25 %). Puedes filtrar por categoría y ordenar por prioridad o distancia. Pulsa **Reservar**. |
-| **Necesidades** | Registra lo que necesitas (descripción, categoría, cantidad, urgencia y punto en el mapa), y ciérrala cuando esté cubierta. |
+| **Pedir alimentos** | Publica una solicitud con lo que necesitas (descripción, categoría, cantidad, urgencia y punto en el mapa). Los donantes la ven y pueden ofrecerte una donación: recibirás un aviso y aparecerá primero en Buscar, marcada 🎁 y apartada para ti. Cierra la solicitud cuando quede cubierta. |
 | **Mis reservas** | Ves si el donante ya confirmó y el tiempo que le queda. Puedes cancelar la reserva. |
 | **Entregas** | Cuando recibas el alimento, pulsa **Confirmar entrega** o **Reportar incidencia**. |
+| **Mensajes** | Chat con el donante de cada donación que reservaste o que te ofrecieron (en Buscar, **💬 Preguntar al donante**). Se cierra cuando la reserva o la donación termina, pero puedes seguir leyendo lo acordado. |
 | **Avisos** | Notificaciones. |
 
 Una donación solo puede tener **una reserva activa**: si dos receptores la reservan a la vez, uno la obtiene

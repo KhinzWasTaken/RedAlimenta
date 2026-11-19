@@ -57,15 +57,22 @@ def _validar_categoria(db: Session, id_categoria: int) -> None:
 def crear_donacion(db: Session, id_donante: int, *, nombre_alimento: str, id_categoria: int, cantidad,
                    unidad_medida: str, lat: float, lon: float, ciudad: str, departamento: str,
                    fecha_vencimiento: datetime | None = None, descripcion: str | None = None,
-                   condiciones_recogida: str | None = None, direccion: str | None = None) -> Donacion:
+                   condiciones_recogida: str | None = None, direccion: str | None = None,
+                   id_necesidad: int | None = None) -> Donacion:
     _validar_categoria(db, id_categoria)
     if Decimal(str(cantidad)) <= 0:
         raise ErrorDominio("La cantidad debe ser mayor que cero")
+    if id_necesidad is not None:  # D-11: se ofrece para una solicitud abierta
+        n = db.get(NecesidadAlimentaria, id_necesidad)
+        if n is None:
+            raise NoEncontrado("Necesidad no encontrada")
+        if n.estado_necesidad != "ABIERTA":
+            raise TransicionInvalida(f"La necesidad está {n.estado_necesidad} y ya no recibe ofertas")
     u = crear_ubicacion(db, lat, lon, ciudad, departamento, direccion)
     d = Donacion(id_donante=id_donante, id_categoria=id_categoria, id_ubicacion=u.id_ubicacion,
                  nombre_alimento=nombre_alimento, descripcion=descripcion, cantidad=cantidad,
                  unidad_medida=unidad_medida, fecha_vencimiento=fecha_vencimiento,
-                 condiciones_recogida=condiciones_recogida)
+                 condiciones_recogida=condiciones_recogida, id_necesidad=id_necesidad)
     db.add(d)
     db.flush()
     db.refresh(d)
@@ -105,13 +112,30 @@ def actualizar_donacion(db: Session, id_donacion: int, id_donante: int, **cambio
     return d
 
 
-def transicionar_donacion(db: Session, id_donacion: int, nuevo: str) -> tuple[str, Donacion]:
-    """Único punto que cambia el estado (D-01). Devuelve (estado_anterior, donación)."""
+def receptor_exclusivo(db: Session, d: Donacion) -> int | None:
+    """D-11: receptor que tiene la exclusiva de una donación ofrecida para su necesidad, mientras siga ABIERTA."""
+    if d.id_necesidad is None:
+        return None
+    n = db.get(NecesidadAlimentaria, d.id_necesidad)
+    return n.id_receptor if n is not None and n.estado_necesidad == "ABIERTA" else None
+
+
+def transicionar_donacion(db: Session, id_donacion: int, nuevo: str,
+                          id_receptor: int | None = None) -> tuple[str, Donacion]:
+    """Único punto que cambia el estado (D-01). Devuelve (estado_anterior, donación).
+
+    Para RESERVADA, `id_receptor` es quien reserva: una donación ofrecida para una necesidad abierta
+    solo la reserva el receptor de esa necesidad (D-11).
+    """
     d = obtener_donacion(db, id_donacion, bloquear=True)
     if nuevo not in TRANSICIONES_DONACION.get(d.estado_donacion, set()):
         raise TransicionInvalida(f"Transición de donación no permitida: {d.estado_donacion} → {nuevo}")
     if nuevo == "RESERVADA" and d.fecha_vencimiento is not None and d.fecha_vencimiento <= db.scalar(func.now()):
         raise TransicionInvalida("La donación ya venció y no se puede reservar")
+    if nuevo == "RESERVADA":
+        exclusivo = receptor_exclusivo(db, d)
+        if exclusivo is not None and exclusivo != id_receptor:
+            raise TransicionInvalida("Esta donación fue ofrecida para la necesidad de otro receptor")
     anterior = d.estado_donacion
     d.estado_donacion = nuevo
     db.flush()
@@ -214,6 +238,7 @@ WITH punto AS (
 ), candidatas AS (
   SELECT d.id_donacion, d.id_donante, d.id_categoria, c.nombre_categoria, d.nombre_alimento, d.cantidad,
          d.unidad_medida, d.fecha_vencimiento, d.condiciones_recogida, u.direccion_referencia, u.ciudad,
+         d.id_necesidad, nd.id_necesidad IS NOT NULL AS para_mi,
          u.departamento, ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon,
          ST_Distance(u.coordenada_geografica, p.g) AS distancia_m,
          coalesce(ur.valor, 0) AS urgencia, ur.nivel AS nivel_urgencia,
@@ -226,8 +251,10 @@ WITH punto AS (
   JOIN categoria_alimento c ON c.id_categoria = d.id_categoria
   CROSS JOIN punto p
   LEFT JOIN urgencia ur ON ur.id_categoria = d.id_categoria
+  LEFT JOIN necesidad_alimentaria nd ON nd.id_necesidad = d.id_necesidad AND nd.estado_necesidad = 'ABIERTA'
   WHERE d.estado_donacion = 'DISPONIBLE'
     AND (d.fecha_vencimiento IS NULL OR d.fecha_vencimiento > :ahora)
+    AND (nd.id_necesidad IS NULL OR nd.id_receptor = :id_receptor)  -- D-11: exclusiva del receptor que la pidió
     AND ST_DWithin(u.coordenada_geografica, p.g, :radio_m)
     {filtros}
 )
@@ -269,7 +296,7 @@ def buscar_donaciones(db: Session, *, id_receptor: int, lat: float | None = None
         parametros["vence_antes"] = vence_antes
     sql = SQL_BUSQUEDA.format(
         filtros="\n    ".join(filtros),
-        orden="distancia_m, puntaje DESC" if orden == "distancia" else "puntaje DESC, distancia_m",
+        orden="para_mi DESC, " + ("distancia_m, puntaje DESC" if orden == "distancia" else "puntaje DESC, distancia_m"),
     )
     parametros.update({
         "lat": lat, "lon": lon, "id_receptor": id_receptor, "radio_m": radio_m or config.RADIO_M_DEFECTO,
@@ -285,10 +312,13 @@ SQL_DETALLE_DONACION = """
 SELECT d.id_donacion, d.id_donante, d.id_categoria, c.nombre_categoria AS categoria, d.nombre_alimento,
        d.descripcion, d.cantidad, d.unidad_medida, d.fecha_vencimiento, d.fecha_publicacion,
        d.condiciones_recogida, d.estado_donacion, u.direccion_referencia, u.ciudad, u.departamento,
-       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon
+       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon,
+       d.id_necesidad, nd.descripcion AS necesidad,
+       CASE WHEN nd.estado_necesidad = 'ABIERTA' THEN nd.id_receptor END AS id_receptor_exclusivo
 FROM donacion d
 JOIN categoria_alimento c ON c.id_categoria = d.id_categoria
 JOIN ubicacion_geografica u ON u.id_ubicacion = d.id_ubicacion
+LEFT JOIN necesidad_alimentaria nd ON nd.id_necesidad = d.id_necesidad
 WHERE {filtro}
 ORDER BY d.id_donacion DESC
 LIMIT 500
@@ -297,7 +327,9 @@ SQL_DETALLE_NECESIDAD = """
 SELECT n.id_necesidad, n.id_receptor, n.id_categoria, c.nombre_categoria AS categoria, n.descripcion,
        n.cantidad_requerida, n.unidad_medida, n.nivel_urgencia, n.fecha_limite, n.estado_necesidad,
        u.direccion_referencia, u.ciudad, u.departamento,
-       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon
+       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon,
+       (SELECT count(*) FROM donacion o WHERE o.id_necesidad = n.id_necesidad
+          AND o.estado_donacion IN ('DISPONIBLE', 'RESERVADA', 'ENTREGADA')) AS ofertas
 FROM necesidad_alimentaria n
 JOIN categoria_alimento c ON c.id_categoria = n.id_categoria
 JOIN ubicacion_geografica u ON u.id_ubicacion = n.id_ubicacion
@@ -332,6 +364,44 @@ def detalle_necesidades(db: Session, ids: list[int] | None = None, id_receptor: 
         params["id_receptor"] = id_receptor
     return [dict(f) for f in db.execute(text(SQL_DETALLE_NECESIDAD.format(filtro=" AND ".join(filtros))),
                                         params).mappings()]
+
+
+SQL_SOLICITUDES = """
+WITH punto AS (
+  SELECT CASE WHEN CAST(:lat AS double precision) IS NULL THEN NULL
+              ELSE ST_SetSRID(ST_MakePoint(CAST(:lon AS double precision), CAST(:lat AS double precision)),
+                              4326)::geography END AS g
+)
+SELECT n.id_necesidad, n.id_categoria, c.nombre_categoria AS categoria, n.descripcion, n.cantidad_requerida,
+       n.unidad_medida, n.nivel_urgencia, n.fecha_limite, u.ciudad, u.departamento,
+       ST_Y(u.coordenada_geografica::geometry) AS lat, ST_X(u.coordenada_geografica::geometry) AS lon,
+       ST_Distance(u.coordenada_geografica, p.g) AS distancia_m,
+       (SELECT count(*) FROM donacion o WHERE o.id_necesidad = n.id_necesidad
+          AND o.estado_donacion IN ('DISPONIBLE', 'RESERVADA', 'ENTREGADA')) AS ofertas
+FROM necesidad_alimentaria n
+JOIN categoria_alimento c ON c.id_categoria = n.id_categoria
+JOIN ubicacion_geografica u ON u.id_ubicacion = n.id_ubicacion
+CROSS JOIN punto p
+WHERE n.estado_necesidad = 'ABIERTA'
+  AND (n.fecha_limite IS NULL OR n.fecha_limite > now())
+  AND (p.g IS NULL OR ST_DWithin(u.coordenada_geografica, p.g, :radio_m))
+  AND (CAST(:id_categoria AS smallint) IS NULL OR n.id_categoria = CAST(:id_categoria AS smallint))
+ORDER BY CASE n.nivel_urgencia WHEN 'CRITICA' THEN 0 WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END,
+         distancia_m NULLS LAST, n.fecha_limite NULLS LAST, n.id_necesidad
+LIMIT 200
+"""
+
+
+def solicitudes_abiertas(db: Session, lat: float | None = None, lon: float | None = None,
+                         radio_m: float | None = None, id_categoria: int | None = None) -> list[dict]:
+    """D-11: necesidades ABIERTAS y vigentes que ven los donantes, la más urgente primero.
+
+    No incluye al receptor ni su dirección escrita (política de datos): solo ciudad, punto y lo que se necesita.
+    """
+    if (lat is None) != (lon is None):
+        raise ErrorDominio("Indica latitud y longitud juntas")
+    parametros = {"lat": lat, "lon": lon, "radio_m": radio_m or config.RADIO_M_DEFECTO, "id_categoria": id_categoria}
+    return [dict(f) for f in db.execute(text(SQL_SOLICITUDES), parametros).mappings()]
 
 
 def donaciones_por_vencer(db: Session, horas: float, ahora: datetime | None = None) -> list[dict]:

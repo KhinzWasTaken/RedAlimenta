@@ -15,6 +15,7 @@ que genera una fila de auditoría y una notificación in-app.
 | Entrega | PROGRAMADA, COMPLETADA, CON_INCIDENCIA, CANCELADA |
 | Confirmación de entrega | CONFIRMADA, CON_INCIDENCIA |
 | Notificación | NO_LEIDA, LEIDA, ARCHIVADA |
+| Conversación (D-12) | ABIERTA, CERRADA |
 | Nivel de urgencia | BAJA, MEDIA, ALTA, CRITICA |
 
 ## Transiciones permitidas
@@ -48,3 +49,9 @@ que genera una fila de auditoría y una notificación in-app.
 
 ### Notificación
 - NO_LEIDA → LEIDA | ARCHIVADA; LEIDA → ARCHIVADA
+
+### Conversación (D-12)
+- Nace ABIERTA con RESERVA_CREADA o con DONACION_CREADA ofrecida para una solicitud (D-11).
+- ABIERTA → CERRADA con RESERVA_CANCELADA o RESERVA_EXPIRADA de ese receptor (salvo si nació de una oferta) y con
+  DONACION_ENTREGADA, DONACION_CANCELADA o DONACION_VENCIDA (todas las de la donación).
+- CERRADA → ABIERTA si el mismo receptor vuelve a reservar. Cerrada solo se lee; los mensajes nunca cambian.

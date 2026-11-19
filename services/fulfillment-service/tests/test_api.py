@@ -55,6 +55,17 @@ def test_si_catalog_rechaza_la_reserva_queda_cancelada(cliente, catalogo, evento
     assert eventos.tipos() == ["RESERVA_CREADA", "RESERVA_CANCELADA"]
 
 
+def test_donacion_ofrecida_para_una_solicitud_solo_la_reserva_su_receptor(cliente, catalogo, eventos, Sesion):
+    """D-11: fulfillment rechaza antes de insertar si la donación está apartada para otro receptor."""
+    catalogo.datos[10]["id_receptor_exclusivo"] = 5
+    r = reservar(cliente, 10, OTRO_RECEPTOR)
+    assert r.status_code == 409 and "otro receptor" in r.json()["detail"]
+    with Sesion() as db:
+        assert db.scalar(select(func.count()).select_from(Reserva)) == 0
+    assert eventos.tipos() == [] and catalogo.transiciones == []
+    assert reservar(cliente, 10, RECEPTOR).status_code == 201
+
+
 def test_si_catalog_esta_caido_no_quedan_reservas_huerfanas(cliente, catalogo, Sesion):
     catalogo.caido = True
     assert reservar(cliente).status_code == 503

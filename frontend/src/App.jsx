@@ -2,27 +2,31 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, guardarSesion, leerSesion } from './api'
 import { Aviso, useDatos } from './componentes/Comunes'
 import Login from './pantallas/Login'
-import { MisDonaciones, Publicar } from './pantallas/Donante'
+import { MisDonaciones, Publicar, Solicitudes } from './pantallas/Donante'
 import { Buscar, MisReservas } from './pantallas/Receptor'
 import Entregas from './pantallas/Entregas'
 import Notificaciones from './pantallas/Notificaciones'
 import { Auditoria, Categorias, Cuentas } from './pantallas/Admin'
 import Necesidades from './pantallas/Necesidades'
+import Mensajes from './pantallas/Mensajes'
 import Tablero from './pantallas/Tablero'
 import Trazabilidad from './pantallas/Trazabilidad'
 
 const PESTANAS = {
   DONANTE: [
+    ['solicitudes', 'Solicitudes', '🙋'],
     ['publicar', 'Publicar', '➕'],
     ['donaciones', 'Mis donaciones', '📦'],
     ['entregas', 'Entregas', '🤝'],
+    ['mensajes', 'Mensajes', '💬'],
     ['avisos', 'Avisos', '🔔'],
   ],
   RECEPTOR: [
     ['buscar', 'Buscar', '🗺️'],
-    ['necesidades', 'Necesidades', '📝'],
+    ['necesidades', 'Pedir alimentos', '🙋'],
     ['reservas', 'Mis reservas', '📋'],
     ['entregas', 'Entregas', '🤝'],
+    ['mensajes', 'Mensajes', '💬'],
     ['avisos', 'Avisos', '🔔'],
   ],
   ADMINISTRADOR: [
@@ -40,6 +44,8 @@ const pestanaDeHash = () => window.location.hash.replace('#', '')
 export default function App() {
   const [sesion, setSesion] = useState(() => leerSesion())
   const [pestana, setPestana] = useState(pestanaDeHash)
+  const [oferta, setOferta] = useState(null) // D-11: solicitud a la que responde el donante al publicar
+  const [chatDonacion, setChatDonacion] = useState(null) // D-12: conversación a abrir al ir a Mensajes
 
   function ir(id) {
     window.location.hash = id
@@ -90,6 +96,12 @@ export default function App() {
   }, [sesion, verificado, refrescar])
 
   const contador = useDatos(sesion ? '/notificaciones/no-leidas' : null, 5000)
+  const usaChat = sesion && sesion.usuario.rol !== 'ADMINISTRADOR'
+  const chatNoLeidos = useDatos(usaChat ? '/conversaciones/no-leidos' : null, 5000)
+  const abrirChat = (idDonacion) => {
+    setChatDonacion(idDonacion)
+    ir('mensajes')
+  }
 
   if (!sesion) return <Login onEntrar={iniciar} />
 
@@ -126,11 +138,18 @@ export default function App() {
       )}
 
       <main className="contenido">
-        {actual === 'publicar' && <Publicar onPublicada={() => ir('donaciones')} />}
-        {actual === 'donaciones' && <MisDonaciones />}
-        {actual === 'buscar' && <Buscar onReservada={() => ir('reservas')} />}
-        {actual === 'reservas' && <MisReservas />}
-        {actual === 'entregas' && <Entregas />}
+        {actual === 'solicitudes' && (
+          <Solicitudes onOfrecer={(n) => { setOferta(n); ir('publicar') }} />
+        )}
+        {actual === 'publicar' && (
+          <Publicar oferta={oferta} onQuitarOferta={() => setOferta(null)}
+            onPublicada={() => { setOferta(null); ir('donaciones') }} />
+        )}
+        {actual === 'donaciones' && <MisDonaciones onChat={abrirChat} />}
+        {actual === 'buscar' && <Buscar onReservada={() => ir('reservas')} onChat={abrirChat} />}
+        {actual === 'reservas' && <MisReservas onChat={abrirChat} />}
+        {actual === 'entregas' && <Entregas onChat={abrirChat} />}
+        {actual === 'mensajes' && <Mensajes donacionInicial={chatDonacion} onCambio={chatNoLeidos.recargar} />}
         {actual === 'avisos' && <Notificaciones onCambio={contador.recargar} />}
         {actual === 'cuentas' && <Cuentas />}
         {actual === 'auditoria' && <Auditoria />}
@@ -149,6 +168,9 @@ export default function App() {
             {texto}
             {id === 'avisos' && contador.datos?.no_leidas > 0 && (
               <span className="insignia">{contador.datos.no_leidas}</span>
+            )}
+            {id === 'mensajes' && chatNoLeidos.datos?.no_leidos > 0 && (
+              <span className="insignia">{chatNoLeidos.datos.no_leidos}</span>
             )}
           </button>
         ))}

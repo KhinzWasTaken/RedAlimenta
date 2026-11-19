@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, fecha, restante } from '../api'
 import { Aviso, Estado, useAccion, useDatos, useEscritorio } from '../componentes/Comunes'
 import Mapa, { CIUDADES } from '../componentes/Mapa'
@@ -18,10 +18,24 @@ const VACIO = {
   ciudad: 'Bogotá',
 }
 
-export function Publicar({ onPublicada }) {
+const UNIDADES = ['kg', 'litros', 'unidades', 'porciones', 'latas', 'paquetes']
+const COLOR_URGENCIA = { CRITICA: '#c0392b', ALTA: '#e67e22', MEDIA: '#d9a400', BAJA: '#8a8f98' }
+
+// `oferta`: solicitud (necesidad abierta) a la que responde esta donación (D-11); prellena el formulario.
+export function Publicar({ onPublicada, oferta, onQuitarOferta }) {
   const categorias = useDatos('/categorias')
   const [f, setF] = useState(VACIO)
   const [punto, setPunto] = useState(null)
+  useEffect(() => {
+    if (!oferta) return
+    setF((previo) => ({
+      ...previo,
+      id_categoria: String(oferta.id_categoria),
+      cantidad: String(oferta.cantidad_requerida),
+      unidad_medida: oferta.unidad_medida,
+      ciudad: CIUDADES[oferta.ubicacion.ciudad] ? oferta.ubicacion.ciudad : previo.ciudad,
+    }))
+  }, [oferta])
   const escritorio = useEscritorio()
   const { ocupado, mensaje, setMensaje, ejecutar } = useAccion()
   const cambiar = (campo) => (e) => setF({ ...f, [campo]: e.target.value })
@@ -42,6 +56,7 @@ export function Publicar({ onPublicada }) {
           unidad_medida: f.unidad_medida,
           fecha_vencimiento: aIsoBogota(f.fecha_vencimiento),
           condiciones_recogida: f.condiciones_recogida || null,
+          id_necesidad: oferta?.id_necesidad ?? null,
           ubicacion: {
             ...punto,
             direccion_referencia: f.direccion_referencia || null,
@@ -61,6 +76,16 @@ export function Publicar({ onPublicada }) {
   return (
     <section>
       <h2>Publicar donación</h2>
+      {oferta && (
+        <Aviso tipo="info" mensaje={
+          <>
+            Ofreciendo para la solicitud <b>«{oferta.descripcion}»</b> ({oferta.cantidad_requerida}{' '}
+            {oferta.unidad_medida}, urgencia {oferta.nivel_urgencia}, {oferta.ubicacion.ciudad}). La donación quedará
+            apartada para ese receptor mientras su solicitud siga abierta.{' '}
+            <button className="enlace" type="button" onClick={onQuitarOferta}>Publicar para todos</button>
+          </>
+        } />
+      )}
       <div className="publicar">
       <div className="publicar-mapa">
       <label>
@@ -105,7 +130,7 @@ export function Publicar({ onPublicada }) {
           <label>
             Unidad
             <select value={f.unidad_medida} onChange={cambiar('unidad_medida')}>
-              {['kg', 'litros', 'unidades', 'porciones', 'latas', 'paquetes'].map((u) => (
+              {[...new Set([...UNIDADES, f.unidad_medida])].map((u) => (
                 <option key={u}>{u}</option>
               ))}
             </select>
@@ -127,7 +152,7 @@ export function Publicar({ onPublicada }) {
         </label>
         <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
         <button type="submit" disabled={ocupado}>
-          {ocupado ? 'Publicando…' : 'Publicar donación'}
+          {ocupado ? 'Publicando…' : oferta ? 'Ofrecer donación' : 'Publicar donación'}
         </button>
       </form>
       </div>
@@ -135,7 +160,7 @@ export function Publicar({ onPublicada }) {
   )
 }
 
-export function MisDonaciones() {
+export function MisDonaciones({ onChat }) {
   const donaciones = useDatos('/donaciones/mias', 8000)
   const reservas = useDatos('/reservas/mias', 8000)
   const recargar = async () => {
@@ -174,6 +199,12 @@ export function MisDonaciones() {
             <p className="tenue pequeno">
               Vence {fecha(d.fecha_vencimiento)} · {d.ubicacion.direccion_referencia || 'Sin dirección'}
             </p>
+            {d.necesidad && <p className="pequeno">🙋 Para la solicitud «{d.necesidad}»</p>}
+            {d.necesidad && !r && ['DISPONIBLE', 'RESERVADA'].includes(d.estado_donacion) && (
+              <button className="secundario boton-chat" onClick={() => onChat?.(d.id_donacion)}>
+                💬 Chat con quien la pidió
+              </button>
+            )}
             {r && (
               <div className="reserva-en-donacion">
                 <p>
@@ -201,6 +232,9 @@ export function MisDonaciones() {
                   </>
                 )}
                 {r.estado_reserva === 'CONFIRMADA' && <p className="pequeno">Confirma la entrega en la pestaña Entregas.</p>}
+                <button className="secundario boton-chat" onClick={() => onChat?.(d.id_donacion)}>
+                  💬 Chat con {r.receptor}
+                </button>
               </div>
             )}
             {d.estado_donacion === 'DISPONIBLE' && (
@@ -212,6 +246,116 @@ export function MisDonaciones() {
           </article>
         )
       })}
+      </div>
+    </section>
+  )
+}
+
+// D-11: el donante ve lo que piden los receptores (necesidades abiertas) y ofrece una donación para una de ellas.
+export function Solicitudes({ onOfrecer }) {
+  const categorias = useDatos('/categorias')
+  const [ciudad, setCiudad] = useState('Bogotá')
+  const [categoria, setCategoria] = useState('')
+  const [vista, setVista] = useState('mapa')
+  const escritorio = useEscritorio()
+
+  const ruta = useMemo(() => {
+    const q = new URLSearchParams()
+    if (ciudad) {
+      const [lat, lon] = CIUDADES[ciudad].centro
+      q.set('lat', lat)
+      q.set('lon', lon)
+      q.set('radio_km', 40)
+    }
+    if (categoria) q.set('id_categoria', categoria)
+    return `/necesidades/abiertas?${q}`
+  }, [ciudad, categoria])
+  const solicitudes = useDatos(ruta, 15000)
+  const lista = solicitudes.datos ?? []
+
+  const marcadores = lista.map((n) => ({
+    id: n.id_necesidad,
+    etiqueta: `${n.descripcion} · ${n.nivel_urgencia}`,
+    lat: n.ubicacion.lat,
+    lon: n.ubicacion.lon,
+    color: COLOR_URGENCIA[n.nivel_urgencia],
+    popup: (
+      <div className="popup">
+        <b>{n.descripcion}</b>
+        <br />
+        {n.cantidad_requerida} {n.unidad_medida} · {n.categoria} · {n.nivel_urgencia}
+        <br />
+        <button onClick={() => onOfrecer(n)}>Ofrecer donación</button>
+      </div>
+    ),
+  }))
+
+  return (
+    <section>
+      <h2>Solicitudes de alimentos</h2>
+      <p className="tenue">Lo que piden los receptores, la más urgente primero.</p>
+      <div className="filtros dos">
+        <label>
+          Ciudad
+          <select value={ciudad} onChange={(e) => setCiudad(e.target.value)}>
+            {Object.keys(CIUDADES).map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+            <option value="">Todas</option>
+          </select>
+        </label>
+        <label>
+          Categoría
+          <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <option value="">Todas</option>
+            {categorias.datos?.map((c) => (
+              <option key={c.id_categoria} value={c.id_categoria}>
+                {c.nombre_categoria}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {!escritorio && (
+        <div className="segmentado" role="tablist">
+          {['mapa', 'lista'].map((v) => (
+            <button key={v} className={vista === v ? 'activa' : ''} onClick={() => setVista(v)}>
+              {v === 'mapa' ? 'Mapa' : `Lista (${lista.length})`}
+            </button>
+          ))}
+        </div>
+      )}
+      <Aviso mensaje={solicitudes.error} />
+
+      <div className={escritorio ? 'mapa-y-lista' : ''}>
+        {(escritorio || vista === 'mapa') && (
+          <Mapa marcadores={marcadores} alto={escritorio ? 'calc(100vh - 290px)' : 380}
+            centro={ciudad && !lista.length ? CIUDADES[ciudad].centro : undefined} />
+        )}
+        {(escritorio || vista === 'lista') && (
+          <ol className="lista-resultados">
+            {lista.length === 0 && <p className="tenue">No hay solicitudes abiertas con esos filtros.</p>}
+            {lista.map((n) => (
+              <li key={n.id_necesidad} className="tarjeta">
+                <div className="encabezado">
+                  <h3>{n.descripcion}</h3>
+                  {n.distancia_km != null && <span className="distancia">{n.distancia_km.toFixed(1)} km</span>}
+                </div>
+                <p>
+                  {n.cantidad_requerida} {n.unidad_medida} · {n.categoria} · urgencia{' '}
+                  <b style={{ color: COLOR_URGENCIA[n.nivel_urgencia] }}>{n.nivel_urgencia}</b>
+                </p>
+                <p className="pequeno tenue">
+                  {n.ubicacion.ciudad}
+                  {n.fecha_limite && ` · la necesita antes de ${fecha(n.fecha_limite)}`}
+                  {n.ofertas > 0 && ` · ${n.ofertas} ${n.ofertas === 1 ? 'oferta' : 'ofertas'} recibidas`}
+                </p>
+                <button onClick={() => onOfrecer(n)}>Ofrecer donación</button>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
     </section>
   )

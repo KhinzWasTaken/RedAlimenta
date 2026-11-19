@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from redalimenta_comun.eventos import Consumidor, Evento, primera_vez
 
+from . import chat
 from . import repositorio as repo
 from .db import sesiones
 
@@ -30,6 +31,10 @@ def destinatarios(e: Evento) -> list[tuple[int, str]]:
                 return [(d["id_usuario"], "Tu cuenta fue verificada: ya puedes operar en RedAlimenta.")]
             return [(d["id_usuario"], f"Tu verificación fue rechazada. {d.get('observaciones') or ''}".strip())]
         case "DONACION_CREADA":
+            if receptor:  # D-11: ofrecida para una solicitud del receptor
+                return [(donante, f"Ofreciste {alimento} para la solicitud «{d.get('necesidad', '')}»."),
+                        (receptor, f"Un donante ofreció {alimento} para tu solicitud «{d.get('necesidad', '')}». "
+                                   "Resérvala en Buscar: está apartada para ti.")]
             return [(donante, f"Publicaste la donación {alimento}.")]
         case "DONACION_RESERVADA":
             return [(donante, f"{alimento} fue reservada. Confírmala antes de {_hora(d.get('fecha_expiracion'))}.")]
@@ -76,15 +81,20 @@ def destinatarios(e: Evento) -> list[tuple[int, str]]:
     return []
 
 
+ABREN_O_CIERRAN_CHAT = {"RESERVA_CREADA", "DONACION_CREADA", "RESERVA_CANCELADA", "RESERVA_EXPIRADA",
+                        "DONACION_ENTREGADA", "DONACION_CANCELADA", "DONACION_VENCIDA"}
+
+
 def procesar(evento: Evento) -> int:
     pares = [(u, m) for u, m in destinatarios(evento) if u]
-    if not pares:
+    if not pares and evento.tipo not in ABREN_O_CIERRAN_CHAT:
         return 0
     with sesiones()() as db:
-        if not primera_vez(db, evento, COLA):  # S6-05: reentrega del broker → sin notificaciones repetidas
+        if not primera_vez(db, evento, COLA):  # S6-05: reentrega del broker → sin efectos repetidos
             return 0
         for id_usuario, mensaje in pares:
             repo.crear_notificacion(db, id_usuario, evento.tipo, mensaje)
+        chat.aplicar_evento(db, evento.tipo, evento.id_entidad, evento.datos)  # D-12
         db.commit()
     return len(pares)
 

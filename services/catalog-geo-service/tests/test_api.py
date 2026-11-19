@@ -127,3 +127,47 @@ def test_identificador_de_correlacion_viaja_hasta_el_evento(cliente, eventos):
 
 def test_vivo_no_depende_de_la_base(cliente):
     assert cliente.get("/vivo").json()["estado"] == "vivo"
+
+
+def test_solicitudes_d11_donante_ofrece_y_solo_el_receptor_reserva(cliente, semilla, eventos):
+    """D-11: los donantes ven las necesidades abiertas, ofrecen una donación y queda apartada para ese receptor."""
+    # Los donantes ven las solicitudes abiertas cerca de un punto, la más urgente primero y sin datos del receptor
+    cerca = cliente.get("/api/necesidades/abiertas?lat=4.6&lon=-74.12&radio_km=20", headers=DONANTE).json()
+    assert [n["id_necesidad"] for n in cerca] == [1, 2, 3, 4]
+    assert cerca[0]["nivel_urgencia"] == "CRITICA" and cerca[0]["distancia_km"] > 0
+    assert "id_receptor" not in cerca[0] and "direccion_referencia" not in cerca[0]["ubicacion"]
+    todas = cliente.get("/api/necesidades/abiertas?id_categoria=4", headers=DONANTE).json()
+    assert {n["id_necesidad"] for n in todas} == {1, 6} and todas[0]["distancia_km"] is None
+    assert cliente.get("/api/necesidades/abiertas", headers=RECEPTOR).status_code == 403
+    assert cliente.get("/api/necesidades/abiertas?lat=4.6", headers=DONANTE).status_code == 400
+
+    # El donante ofrece una donación para la necesidad 1 (receptor 3)
+    r = cliente.post("/api/donaciones", json=nueva(nombre_alimento="Arroz", id_necesidad=1), headers=DONANTE)
+    assert r.status_code == 201, r.text
+    d = r.json()
+    assert d["id_necesidad"] == 1 and d["id_receptor_exclusivo"] == 3
+    evento = eventos.eventos[-1]
+    assert evento.tipo == "DONACION_CREADA" and evento.datos["id_receptor"] == 3 and evento.datos["id_necesidad"] == 1
+    assert cliente.get("/api/necesidades/mias", headers=RECEPTOR).json()[-1]["ofertas"] == 1  # necesidad 1
+
+    # Solo la ve el receptor que la pidió, y primero que las demás
+    propia = cliente.get("/api/donaciones/disponibles?id_necesidad=1", headers=RECEPTOR).json()["resultados"]
+    assert propia[0]["id_donacion"] == d["id_donacion"] and propia[0]["para_mi"] is True
+    otro = token(9, "RECEPTOR")
+    ajenas = cliente.get("/api/donaciones/disponibles?lat=4.57&lon=-74.13", headers=otro).json()["resultados"]
+    assert d["id_donacion"] not in [x["id_donacion"] for x in ajenas]
+
+    # catalog rechaza que otro receptor la reserve (D-01 + D-11)
+    ruta = f"/internal/donaciones/{d['id_donacion']}/transiciones"
+    ajena = cliente.post(ruta, json={"estado": "RESERVADA", "datos": {"id_receptor": 9}}, headers=INTERNO)
+    assert ajena.status_code == 409 and "otro receptor" in ajena.json()["detail"]
+
+    # Si el receptor cierra su necesidad, la donación queda abierta a todos
+    cliente.post("/api/necesidades/1/cerrar", headers=RECEPTOR)
+    ajenas = cliente.get("/api/donaciones/disponibles?lat=4.57&lon=-74.13", headers=otro).json()["resultados"]
+    assert d["id_donacion"] in [x["id_donacion"] for x in ajenas]
+    assert cliente.post(ruta, json={"estado": "RESERVADA", "datos": {"id_receptor": 9}},
+                        headers=INTERNO).status_code == 200
+    # Y ya no recibe ofertas
+    assert cliente.post("/api/donaciones", json=nueva(id_necesidad=1), headers=DONANTE).status_code == 409
+    assert cliente.post("/api/donaciones", json=nueva(id_necesidad=999), headers=DONANTE).status_code == 404

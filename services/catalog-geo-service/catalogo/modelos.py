@@ -65,6 +65,9 @@ class Donacion(Base):
     estado_donacion: Mapped[str] = mapped_column(
         ESTADO_DONACION, server_default="DISPONIBLE", index=True,
         comment="DISPONIBLE, RESERVADA, ENTREGADA, CANCELADA o VENCIDA.")
+    id_necesidad: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("necesidad_alimentaria.id_necesidad"), index=True,
+        comment="Necesidad a la que responde (D-11); NULL si es una donación abierta a todos.")
 
 
 class NecesidadAlimentaria(Base):

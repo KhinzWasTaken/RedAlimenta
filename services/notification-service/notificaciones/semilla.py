@@ -2,7 +2,7 @@
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from .modelos import Notificacion
+from .modelos import Conversacion, Mensaje, Notificacion
 
 # id_usuario, tipo, mensaje, estado
 NOTIFICACIONES = [
@@ -19,6 +19,21 @@ NOTIFICACIONES = [
 ]
 
 
+# D-12: chats de las reservas semilla. donación, donante, receptor, alimento, estado, [(autor, texto)]
+CONVERSACIONES = [
+    (11, 4, 5, "Bandejas paisas", "ABIERTA", [
+        (5, "Hola, reservamos las bandejas. ¿Podemos recogerlas hoy a las 4 p. m.?"),
+        (4, "Claro, por la puerta de la cocina. Traigan neveras portátiles, por favor."),
+    ]),
+    (15, 6, 7, "Mercados familiares", "ABIERTA", [
+        (6, "Confirmé la reserva. ¿Les sirve mañana a las 9 a. m. en la bodega?"),
+    ]),
+    (12, 4, 5, "Arepas de maíz", "CERRADA", [
+        (5, "Recibimos las arepas, ¡muchas gracias!"),
+    ]),
+]
+
+
 def sembrar(db: Session) -> bool:
     if db.scalar(select(Notificacion.id_notificacion).limit(1)) is not None:
         return False
@@ -26,5 +41,15 @@ def sembrar(db: Session) -> bool:
         db.add(Notificacion(id_usuario=id_usuario, tipo_notificacion=tipo, mensaje=mensaje,
                             estado_notificacion=estado,
                             fecha_lectura=text("now()") if estado in ("LEIDA", "ARCHIVADA") else None))
+    for id_donacion, donante, receptor, alimento, estado, mensajes in CONVERSACIONES:
+        c = Conversacion(id_donacion=id_donacion, id_donante=donante, id_receptor=receptor,
+                         nombre_alimento=alimento, origen="RESERVA")
+        db.add(c)
+        db.flush()
+        for autor, texto in mensajes:  # se escriben con la conversación abierta (el trigger lo exige)
+            db.add(Mensaje(id_conversacion=c.id_conversacion, id_autor=autor, texto=texto))
+            db.flush()
+        if estado == "CERRADA":
+            c.estado_conversacion, c.fecha_cierre = "CERRADA", text("now()")
     db.flush()
     return True

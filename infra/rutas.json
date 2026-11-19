@@ -15,7 +15,7 @@
     },
     "notification": {
       "carpeta": "notification-service", "paquete": "notificaciones", "puerto": 8004,
-      "prefijos": ["/api/notificaciones"]
+      "prefijos": ["/api/notificaciones", "/api/conversaciones"]
     },
     "analytics": {
       "carpeta": "analytics-service", "paquete": "analitica", "puerto": 8005,

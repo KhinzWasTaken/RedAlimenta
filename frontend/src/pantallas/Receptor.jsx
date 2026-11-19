@@ -18,7 +18,7 @@ function Prioridad({ p, nivel }) {
   )
 }
 
-export function Buscar({ onReservada }) {
+export function Buscar({ onReservada, onChat }) {
   const categorias = useDatos('/categorias')
   const necesidades = useDatos('/necesidades/mias')
   const [referencia, setReferencia] = useState('') // id_necesidad o 'mapa'
@@ -82,10 +82,11 @@ export function Buscar({ onReservada }) {
     etiqueta: `${d.nombre_alimento} · ${d.distancia_km.toFixed(1)} km`,
     lat: d.ubicacion.lat,
     lon: d.ubicacion.lon,
-    color: colorPuntaje(d.prioridad.puntaje),
+    color: d.para_mi ? '#7b3fbf' : colorPuntaje(d.prioridad.puntaje),
     popup: (
       <div className="popup">
         <b>{d.nombre_alimento}</b>
+        {d.para_mi && ' · 🎁 para ti'}
         <br />
         {d.cantidad} {d.unidad_medida} · {d.distancia_km.toFixed(1)} km
         <br />
@@ -170,6 +171,7 @@ export function Buscar({ onReservada }) {
                 <h3>{d.nombre_alimento}</h3>
                 <span className="distancia">{d.distancia_km.toFixed(1)} km</span>
               </div>
+              {d.para_mi && <p className="pequeno"><b>🎁 Ofrecida para tu solicitud · apartada para ti</b></p>}
               <p>
                 {d.cantidad} {d.unidad_medida} · {d.categoria} · {d.donante}
               </p>
@@ -177,9 +179,16 @@ export function Buscar({ onReservada }) {
                 Vence {fecha(d.fecha_vencimiento)} · {d.ubicacion.direccion_referencia}
               </p>
               <Prioridad p={d.prioridad} nivel={d.nivel_urgencia} />
-              <button disabled={ocupado} onClick={() => reservar(d)}>
-                Reservar
-              </button>
+              <div className="fila-botones">
+                <button disabled={ocupado} onClick={() => reservar(d)}>
+                  Reservar
+                </button>
+                {d.para_mi && (
+                  <button className="secundario" onClick={() => onChat?.(d.id_donacion)}>
+                    💬 Preguntar al donante
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ol>
@@ -189,7 +198,7 @@ export function Buscar({ onReservada }) {
   )
 }
 
-export function MisReservas() {
+export function MisReservas({ onChat }) {
   const reservas = useDatos('/reservas/mias', 5000)
   const { ocupado, mensaje, setMensaje, ejecutar } = useAccion(reservas.recargar)
   const post = (ruta) => () => api(ruta, { method: 'POST' })
@@ -240,6 +249,11 @@ export function MisReservas() {
           )}
           {r.estado_reserva === 'CONFIRMADA' && (
             <p className="pequeno">El donante confirmó. Confirma la entrega en la pestaña Entregas.</p>
+          )}
+          {['PENDIENTE', 'CONFIRMADA'].includes(r.estado_reserva) && (
+            <button className="secundario boton-chat" onClick={() => onChat?.(r.donacion.id_donacion)}>
+              💬 Chat con {r.donacion.donante}
+            </button>
           )}
         </article>
       ))}

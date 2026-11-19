@@ -53,3 +53,11 @@ de sembrar, para que ninguna reserva semilla quede anterior a su donación (lo v
 
 Ocho avisos para los usuarios 2, 4, 5, 6 y 7, coherentes con las reservas de arriba, en los estados
 NO_LEIDA, LEIDA y ARCHIVADA.
+
+## Conversaciones del chat (notification, D-12)
+
+| Donación | Donante | Receptor | Estado | Mensajes |
+| --- | --- | --- | --- | --- |
+| 11 Bandejas paisas | 4 | 5 | ABIERTA | 2 (hora y lugar de recogida) |
+| 15 Mercados familiares | 6 | 7 | ABIERTA | 1 |
+| 12 Arepas de maíz | 4 | 5 | CERRADA (entregada) | 1 |
