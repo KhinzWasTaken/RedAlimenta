@@ -19,10 +19,15 @@ Trabajo de Bases de Datos Avanzadas. El repositorio tiene dos partes:
 
 ### Publicar en internet (Azure for Students)
 
-En Azure Cloud Shell (navegador):
+En Azure Cloud Shell (navegador). Como el repositorio es privado, primero crea un token de GitHub de solo
+lectura (paso 0 de la guía) y luego:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/main/scripts/nube/azure.sh | bash
+export GITHUB_TOKEN='github_pat_...'
+```
+
+```bash
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/KhinzWasTaken/RedAlimenta/contents/scripts/nube/azure.sh?ref=main" | bash
 ```
 
 Crea la máquina, instala todo con HTTPS y muestra el enlace y la contraseña de la demostración. Guía completa,
