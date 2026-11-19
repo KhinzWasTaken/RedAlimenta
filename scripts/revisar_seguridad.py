@@ -2,15 +2,20 @@
 
     python scripts/revisar_seguridad.py          revisa el repositorio y los contratos
     python scripts/revisar_seguridad.py --bases  además consulta el almacén (infra/.env): sin datos personales
+    python scripts/revisar_seguridad.py --gateway http://localhost:8080  además prueba el límite de intentos
 
 Comprobaciones:
 1. Ningún archivo .env real ni claves privadas en el repositorio; los secretos solo como variables.
 2. Toda ruta de la API exige sesión (JWT) salvo las públicas a propósito; las internas exigen X-Token-Interno.
 3. El almacén (y por tanto los reportes) no tiene columnas de datos personales.
 4. Ninguna imagen (Dockerfile) define secretos.
+5. Con --gateway: el gateway corta con 429 los intentos repetidos de inicio de sesión desde una misma IP.
 """
 import json
+import random
 import re
+import urllib.error
+import urllib.request
 import subprocess
 import sys
 from pathlib import Path
@@ -81,12 +86,31 @@ def revisar_almacen(problemas: list[str]) -> None:
         problemas.append(f"almacén: columna con dato personal «{col}»")
 
 
+def revisar_limite_intentos(problemas: list[str], base: str) -> None:
+    """Fuerza bruta simulada: 30 intentos fallidos desde una IP de prueba deben terminar en 429."""
+    ip = f"198.51.100.{random.randint(1, 254)}"  # red de documentación; no bloquea a nadie real
+    codigos = []
+    for _ in range(30):
+        pedido = urllib.request.Request(
+            f"{base.rstrip('/')}/api/auth/login", method="POST",
+            data=json.dumps({"correo": "fuerza@bruta.co", "contrasena": "no-es-la-clave"}).encode(),
+            headers={"Content-Type": "application/json", "X-Forwarded-For": ip})
+        try:
+            codigos.append(urllib.request.urlopen(pedido, timeout=10).status)
+        except urllib.error.HTTPError as e:
+            codigos.append(e.code)
+    if 429 not in codigos:
+        problemas.append("gateway: 30 intentos de inicio de sesión seguidos no reciben 429 (sin límite de intentos)")
+
+
 def main(argv: list[str]) -> int:
     problemas: list[str] = []
     revisar_repositorio(problemas)
     rutas = revisar_contratos(problemas)
     if "--bases" in argv:
         revisar_almacen(problemas)
+    if "--gateway" in argv:
+        revisar_limite_intentos(problemas, argv[argv.index("--gateway") + 1])
     print(json.dumps({"archivos_revisados": len(archivos()), "operaciones_api_revisadas": rutas,
                       "problemas": problemas}, ensure_ascii=False, indent=2))
     print("✓ Sin hallazgos" if not problemas else f"✗ {len(problemas)} hallazgos")
