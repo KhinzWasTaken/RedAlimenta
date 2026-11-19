@@ -71,9 +71,14 @@ else
       creada="$region/$tamano"; break
     fi
     echo "  falló:"; mostrar_error
+    if grep -q "already consumed" /tmp/error-vm.txt; then
+      # Error de la propia CLI que tapa el mensaje de Azure: se lee del despliegue fallido
+      az deployment group list -g "$GRUPO" --query "[?properties.provisioningState=='Failed'].properties.error" \
+        -o json 2>/dev/null | tee -a /tmp/error-vm.txt | grep -E '"(code|message)"' | head -n 6 | sed 's/^ */    /'
+    fi
     az group delete -n "$GRUPO" --yes -o none 2>/dev/null || true
     # Si no es un problema de capacidad o de región, probar otras regiones no ayuda
-    if ! grep -qE 'SkuNotAvailable|AllocationFailed|ZonalAllocationFailed|OverconstrainedAllocationRequest|RequestDisallowedByPolicy|QuotaExceeded|NotAvailableForSubscription' /tmp/error-vm.txt; then
+    if ! grep -qE 'SkuNotAvailable|AllocationFailed|ZonalAllocationFailed|OverconstrainedAllocationRequest|RequestDisallowedByPolicy|QuotaExceeded|NotAvailableForSubscription|already consumed' /tmp/error-vm.txt; then
       echo; echo "Error no relacionado con la región; se detiene. Copia el mensaje de arriba (completo en /tmp/error-vm.txt)."
       exit 1
     fi
