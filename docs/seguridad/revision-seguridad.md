@@ -37,7 +37,7 @@ Ningún dato sensible (salud, origen étnico, etc.) se recoge. No hay datos de m
 
 | Hallazgo | Riesgo | Decisión |
 | --- | --- | --- |
-| Las contraseñas de los usuarios de demostración (`demo123`) están en el repositorio | Bajo: son datos ficticios de demostración | Se documentan como tales; en un despliegue real no se cargan los datos semilla (`MODO_HERRAMIENTAS=migrar`) |
+| Las contraseñas de los usuarios de demostración (`demo123`) están en el repositorio y se usan también en la publicación en Azure | Medio mientras la máquina esté encendida: cualquiera con el enlace podría entrar como administrador | Aceptado por el equipo para la presentación; se mitiga apagando la máquina al terminar. Se cambia con `CLAVE_DEMO`; en un despliegue real no se cargan los datos semilla (`MODO_HERRAMIENTAS=migrar`) |
 | `GET /api/usuarios/nombres` da el nombre de cualquier usuario a cualquier usuario autenticado | Medio: el nombre de una persona natural es dato personal | Se acepta para la finalidad de coordinar entregas y solo expone el nombre (nunca correo ni teléfono). Mejora: limitarlo a las contrapartes de reservas propias |
 | El tráfico interno entre contenedores va por HTTP sin cifrar | Medio en un clúster compartido | Aceptado en el entorno local; en producción, TLS en el Ingress y malla de servicios o NetworkPolicy |
 | No hay recuperación de contraseña ni borrado de cuenta a pedido | La ley da derecho a suprimir datos | Desactivar la cuenta deja de mostrarla; la supresión total requiere un procedimiento manual del administrador (ver política) |

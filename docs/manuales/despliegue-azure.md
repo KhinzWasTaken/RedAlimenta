@@ -47,8 +47,8 @@ página de GitHub.
    curl -fsSL https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/main/scripts/nube/azure.sh | bash
    ```
 
-   Para elegir tú la contraseña de los usuarios de demostración en vez de una al azar, ejecuta antes
-   `export CLAVE_DEMO='TuClave2026'`.
+   Los usuarios de demostración quedan con la contraseña `demo123`. Para usar otra, ejecuta antes
+   `export CLAVE_DEMO='TuClave2026'` (se aplica también si la máquina ya existía).
 
 4. El script prueba regiones y tamaños permitidos para estudiantes hasta crear la máquina, abre los puertos,
    lanza la instalación en la máquina y espera a que el enlace responda. Al final muestra:
@@ -83,8 +83,9 @@ Con el crédito de estudiante alcanza de sobra si la apagas cuando no la uses.
 
 ## 3. Seguridad de la demostración
 
-- Cualquiera con el enlace puede intentar entrar. Por eso la contraseña de los usuarios de demostración ya
-  **no es `demo123`**: el script genera una al azar (o usa `CLAVE_DEMO`). Compártela solo con tu docente.
+- Los usuarios de demostración usan `demo123` (decisión del equipo para la presentación). Como el enlace es
+  público, cualquiera que conozca esa contraseña puede entrar, incluso como administrador: apaga la máquina
+  después de presentar o cambia la contraseña volviendo a ejecutar con `export CLAVE_DEMO='OtraClave'`.
 - El inicio de sesión se bloquea temporalmente (429) tras unos 20 intentos fallidos seguidos desde la misma IP.
 - Los secretos (contraseñas de la base, JWT, token interno) se generan en la máquina, en
   `/opt/redalimenta/infra/.env`, y nunca pasan por el repositorio.
@@ -98,7 +99,7 @@ Con el crédito de estudiante alcanza de sobra si la apagas cuando no la uses.
 | El enlace no abre o el navegador dice que no es seguro | El certificado tarda 1–2 minutos la primera vez. Si sigue, revisa que los puertos 80 y 443 estén abiertos: `az vm open-port -g redalimenta -n redalimenta-vm --port 80,443 --priority 900` |
 | `QuotaExceeded` | La suscripción de estudiante tiene un límite de núcleos; borra otras máquinas o usa `TAMANOS="Standard_B2s"` en otra región |
 | "No se pudo descargar instalar.sh" o "No se pudo clonar" | El repositorio es privado: crea el token del paso 0, haz `export GITHUB_TOKEN=...` y usa el comando de repositorio privado. Si responde 401 o 404, el token expiró o no tiene acceso a `RedAlimenta` con *Contents: Read-only* |
-| La página carga pero no deja entrar | Usa la contraseña que mostró el script (no `demo123`). Para verla: `az vm run-command invoke -g redalimenta -n redalimenta-vm --command-id RunShellScript --scripts "grep CLAVE_DEMO /opt/redalimenta/infra/.env" --query "value[0].message" -o tsv` |
+| La página carga pero no deja entrar | Usa la contraseña que mostró el script (`demo123` salvo que hayas definido `CLAVE_DEMO`). Para verla: `az vm run-command invoke -g redalimenta -n redalimenta-vm --command-id RunShellScript --scripts "grep CLAVE_DEMO /opt/redalimenta/infra/.env" --query "value[0].message" -o tsv` |
 
 ## Detalle técnico
 

@@ -7,7 +7,7 @@
 # descarga el script con la API (ver docs/manuales/despliegue-azure.md).
 #
 # Variables opcionales: GRUPO (redalimenta), VM (redalimenta-vm), REGIONES (+ REGIONES_FIJAS=1 para no
-# consultar las permitidas), TAMANOS, CLAVE_DEMO, RAMA (main),
+# consultar las permitidas), TAMANOS, CLAVE_DEMO (demo123), RAMA (main),
 # GITHUB_TOKEN (repositorio privado).
 # Al final muestra el enlace y la contraseña de los usuarios de demostración.
 set -euo pipefail
