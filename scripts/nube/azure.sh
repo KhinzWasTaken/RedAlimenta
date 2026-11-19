@@ -3,7 +3,11 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/main/scripts/nube/azure.sh | bash
 #
-# Variables opcionales: GRUPO (redalimenta), VM (redalimenta-vm), REGIONES, TAMANOS, CLAVE_DEMO, RAMA (main).
+# Si el repositorio es privado, primero `export GITHUB_TOKEN=...` (token de solo lectura del repositorio) y
+# descarga el script con la API (ver docs/manuales/despliegue-azure.md).
+#
+# Variables opcionales: GRUPO (redalimenta), VM (redalimenta-vm), REGIONES, TAMANOS, CLAVE_DEMO, RAMA (main),
+# GITHUB_TOKEN (repositorio privado).
 # Al final muestra el enlace y la contraseña de los usuarios de demostración.
 set -euo pipefail
 
@@ -14,7 +18,12 @@ RAMA="${RAMA:-main}"
 REGIONES="${REGIONES:-eastus eastus2 southcentralus westus2 westus3 centralus brazilsouth canadacentral}"
 TAMANOS="${TAMANOS:-Standard_B2s Standard_B2als_v2 Standard_B2as_v2 Standard_D2as_v5}"
 IMAGEN="Canonical:ubuntu-24_04-lts:server:latest"
-URL="https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/$RAMA/scripts/nube/instalar.sh"
+TOKEN="${GITHUB_TOKEN:-}"
+if [ -n "$TOKEN" ]; then  # repositorio privado: se descarga por la API con el token
+  DESCARGA="curl -fsSL -H 'Authorization: Bearer $TOKEN' -H 'Accept: application/vnd.github.raw' 'https://api.github.com/repos/KhinzWasTaken/RedAlimenta/contents/scripts/nube/instalar.sh?ref=$RAMA'"
+else
+  DESCARGA="curl -fsSL 'https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/$RAMA/scripts/nube/instalar.sh'"
+fi
 paso() { printf '\n== %s\n' "$*"; }
 
 az account show --query "{suscripcion:name, usuario:user.name}" -o tsv >/dev/null \
@@ -52,8 +61,9 @@ paso "Instalando RedAlimenta en $IP"
 # Corre como servicio en la máquina: sigue aunque Cloud Shell se desconecte
 VARIABLES="RAMA=$RAMA DOMINIO=$DOMINIO"
 [ -n "${CLAVE_DEMO:-}" ] && VARIABLES="$VARIABLES CLAVE_DEMO=$CLAVE_DEMO"
+[ -n "$TOKEN" ] && VARIABLES="$VARIABLES GITHUB_TOKEN=$TOKEN"
 az vm run-command invoke -g "$GRUPO" -n "$VM" --command-id RunShellScript -o none --scripts "
-  curl -fsSL $URL -o /root/instalar.sh
+  $DESCARGA -o /root/instalar.sh || { echo 'No se pudo descargar instalar.sh (¿repositorio privado sin GITHUB_TOKEN?)'; exit 1; }
   systemctl reset-failed redalimenta-instalacion 2>/dev/null || true
   systemd-run --unit redalimenta-instalacion --collect \
     bash -c '$VARIABLES bash /root/instalar.sh > /var/log/redalimenta-instalacion.log 2>&1'"

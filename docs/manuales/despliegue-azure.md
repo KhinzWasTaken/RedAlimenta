@@ -8,22 +8,47 @@ el grupo de recursos `redalimenta`, con el mismo `docker compose` del proyecto m
 certificado HTTPS automáticamente. Solo quedan abiertos los puertos 22 (SSH), 80 y 443; la base de datos y
 RabbitMQ no se exponen.
 
+## 0. Si el repositorio es privado: token de solo lectura (5 minutos)
+
+Azure necesita descargar el código. Si el repositorio de GitHub es **privado**, crea un token que solo pueda
+leer este repositorio:
+
+1. En GitHub: foto de perfil → **Settings** → **Developer settings** → **Personal access tokens** →
+   **Fine-grained tokens** → **Generate new token**.
+2. Nombre: `redalimenta-azure`. Expiración: 30 días (o hasta la fecha de la presentación).
+3. **Repository access** → *Only select repositories* → `RedAlimenta`.
+4. **Permissions** → *Repository permissions* → **Contents: Read-only**. Nada más.
+5. **Generate token** y copia el valor (empieza por `github_pat_`). Solo se muestra una vez; no lo subas al
+   repositorio ni lo pegues en un chat.
+
+El token se usa para descargar y no se guarda en la máquina. Cuando ya no lo necesites, bórralo en la misma
+página de GitHub.
+
 ## 1. Crear y publicar (una sola vez, 15–25 minutos)
 
 1. Entra a [portal.azure.com](https://portal.azure.com) con tu cuenta de Azure for Students.
 2. Abre **Cloud Shell**: el icono `>_` de la barra superior. Elige **Bash**. Si pregunta por almacenamiento,
    elige **No se requiere cuenta de almacenamiento** (o la opción que crea uno por defecto).
-3. Pega este comando y pulsa Enter:
+3. Pega los comandos y pulsa Enter.
+
+   **Repositorio privado** (con el token del paso 0; cambia `github_pat_...` por el tuyo):
+
+   ```bash
+   export GITHUB_TOKEN='github_pat_...'
+   ```
+
+   ```bash
+   curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/KhinzWasTaken/RedAlimenta/contents/scripts/nube/azure.sh?ref=main" | bash
+   ```
+
+   **Repositorio público:**
 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/main/scripts/nube/azure.sh | bash
    ```
 
-   Para elegir tú la contraseña de los usuarios de demostración en vez de una al azar:
-
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/KhinzWasTaken/RedAlimenta/main/scripts/nube/azure.sh | CLAVE_DEMO='TuClave2026' bash
-   ```
+   Para elegir tú la contraseña de los usuarios de demostración en vez de una al azar, ejecuta antes
+   `export CLAVE_DEMO='TuClave2026'`.
 
 4. El script prueba regiones y tamaños permitidos para estudiantes hasta crear la máquina, abre los puertos,
    lanza la instalación en la máquina y espera a que el enlace responda. Al final muestra:
@@ -72,6 +97,7 @@ Con el crédito de estudiante alcanza de sobra si la apagas cuando no la uses.
 | "No se pudo crear la máquina en ninguna región o tamaño permitido" | Tu suscripción limita regiones. En el portal busca **Directivas → Ubicaciones permitidas**, y ejecuta con esas regiones: `... \| REGIONES="eastus2 westeurope" bash` |
 | El enlace no abre o el navegador dice que no es seguro | El certificado tarda 1–2 minutos la primera vez. Si sigue, revisa que los puertos 80 y 443 estén abiertos: `az vm open-port -g redalimenta -n redalimenta-vm --port 80,443 --priority 900` |
 | `QuotaExceeded` | La suscripción de estudiante tiene un límite de núcleos; borra otras máquinas o usa `TAMANOS="Standard_B2s"` en otra región |
+| "No se pudo descargar instalar.sh" o "No se pudo clonar" | El repositorio es privado: crea el token del paso 0, haz `export GITHUB_TOKEN=...` y usa el comando de repositorio privado. Si responde 401 o 404, el token expiró o no tiene acceso a `RedAlimenta` con *Contents: Read-only* |
 | La página carga pero no deja entrar | Usa la contraseña que mostró el script (no `demo123`). Para verla: `az vm run-command invoke -g redalimenta -n redalimenta-vm --command-id RunShellScript --scripts "grep CLAVE_DEMO /opt/redalimenta/infra/.env" --query "value[0].message" -o tsv` |
 
 ## Detalle técnico

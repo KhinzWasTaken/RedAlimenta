@@ -7,6 +7,7 @@
 #   RAMA        rama del repositorio (main)
 #   DOMINIO     nombre público; por defecto <ip-publica>.sslip.io (no hay que comprar dominio)
 #   CLAVE_DEMO  contraseña de los usuarios de demostración; por defecto una al azar
+#   GITHUB_TOKEN  token de solo lectura si el repositorio es privado (no se guarda en el servidor)
 #
 # Es idempotente: si se vuelve a ejecutar, trae la última versión y reconstruye sin borrar los datos.
 set -euo pipefail
@@ -35,10 +36,16 @@ systemctl enable --now docker >/dev/null
 command -v git >/dev/null || apt-get install -y -qq git >/dev/null
 
 paso "Código ($RAMA)"
+GIT=(git)
+if [ -n "${GITHUB_TOKEN:-}" ]; then  # la cabecera solo vale para este comando; el token no queda en .git/config
+  GIT=(git -c "http.extraHeader=Authorization: Basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)")
+fi
 if [ -d "$DIR/.git" ]; then
-  git -C "$DIR" fetch -q origin "$RAMA" && git -C "$DIR" checkout -q "$RAMA" && git -C "$DIR" reset -q --hard "origin/$RAMA"
+  "${GIT[@]}" -C "$DIR" fetch -q origin "$RAMA" && git -C "$DIR" checkout -q "$RAMA" \
+    && git -C "$DIR" reset -q --hard "origin/$RAMA"
 else
-  git clone -q --branch "$RAMA" "$REPO" "$DIR"
+  "${GIT[@]}" clone -q --branch "$RAMA" "$REPO" "$DIR" \
+    || { echo "No se pudo clonar $REPO: si es privado, define GITHUB_TOKEN."; exit 1; }
 fi
 
 paso "Configuración (infra/.env)"
