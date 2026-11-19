@@ -6,7 +6,8 @@
 # Si el repositorio es privado, primero `export GITHUB_TOKEN=...` (token de solo lectura del repositorio) y
 # descarga el script con la API (ver docs/manuales/despliegue-azure.md).
 #
-# Variables opcionales: GRUPO (redalimenta), VM (redalimenta-vm), REGIONES, TAMANOS, CLAVE_DEMO, RAMA (main),
+# Variables opcionales: GRUPO (redalimenta), VM (redalimenta-vm), REGIONES (+ REGIONES_FIJAS=1 para no
+# consultar las permitidas), TAMANOS, CLAVE_DEMO, RAMA (main),
 # GITHUB_TOKEN (repositorio privado).
 # Al final muestra el enlace y la contraseña de los usuarios de demostración.
 set -euo pipefail
@@ -31,25 +32,53 @@ az account show --query "{suscripcion:name, usuario:user.name}" -o tsv >/dev/nul
 az provider register -n Microsoft.Compute --wait >/dev/null 2>&1 || true
 az provider register -n Microsoft.Network --wait >/dev/null 2>&1 || true
 
+# Regiones permitidas por la directiva de la suscripción (Azure for Students limita a unas pocas)
+permitidas=$(az policy assignment list --query "[].parameters.listOfAllowedLocations.value[]" -o tsv 2>/dev/null \
+  | tr '[:upper:]' '[:lower:]' | sort -u | tr '\n' ' ')
+if [ -z "${REGIONES_FIJAS:-}" ] && [ -n "$permitidas" ]; then
+  echo "Regiones permitidas por tu suscripción: $permitidas"
+  orden=""
+  for r in $REGIONES; do case " $permitidas " in *" $r "*) orden="$orden $r";; esac; done
+  for r in $permitidas; do case " $orden " in *" $r "*) ;; *) orden="$orden $r";; esac; done
+  REGIONES="$orden"
+fi
+
+mostrar_error() {  # el mensaje real de Azure, sin la traza
+  grep -vE '^\s*$|Traceback|File "|^\s+' /tmp/error-vm.txt | head -n 6 | sed 's/^/    /'
+}
+
 if az vm show -g "$GRUPO" -n "$VM" >/dev/null 2>&1; then
   paso "La máquina $VM ya existe: se actualiza la aplicación"
   az vm start -g "$GRUPO" -n "$VM" >/dev/null
 else
+  if az group show -n "$GRUPO" >/dev/null 2>&1; then
+    paso "Borrando restos de un intento anterior (grupo $GRUPO sin máquina)"
+    az group delete -n "$GRUPO" --yes -o none
+  fi
   creada=""
   for region in $REGIONES; do
-    for tamano in $TAMANOS; do
-      paso "Creando $VM ($tamano) en $region"
-      az group create -n "$GRUPO" -l "$region" -o none 2>/dev/null || { echo "  región no permitida"; break; }
-      if az vm create -g "$GRUPO" -n "$VM" -l "$region" --image "$IMAGEN" --size "$tamano" \
-          --admin-username azureuser --generate-ssh-keys --public-ip-sku Standard \
-          --os-disk-size-gb 30 -o none 2> /tmp/error-vm.txt; then
-        creada="$region/$tamano"; break 2
-      fi
-      echo "  no disponible: $(grep -m1 -oE '(SkuNotAvailable|RequestDisallowedByPolicy|QuotaExceeded|[A-Za-z]+Error)' /tmp/error-vm.txt || echo error)"
-      az group delete -n "$GRUPO" --yes -o none 2>/dev/null || true
-    done
+    # Tamaños sin restricciones para esta suscripción en la región (evita intentos que fallarán)
+    disponibles=$(az vm list-skus -l "$region" --resource-type virtualMachines \
+      --query "[?length(restrictions)==\`0\`].name" -o tsv 2>/dev/null | tr '\n' ' ')
+    tamano=""
+    for t in $TAMANOS; do case " $disponibles " in *" $t "*) tamano=$t; break;; esac; done
+    if [ -z "$tamano" ]; then echo "  $region: ninguno de los tamaños ($TAMANOS) está disponible"; continue; fi
+    paso "Creando $VM ($tamano) en $region"
+    az group create -n "$GRUPO" -l "$region" -o none 2> /tmp/error-vm.txt || { echo "  región no permitida:"; mostrar_error; continue; }
+    if az vm create -g "$GRUPO" -n "$VM" -l "$region" --image "$IMAGEN" --size "$tamano" \
+        --admin-username azureuser --generate-ssh-keys --public-ip-sku Standard \
+        --os-disk-size-gb 30 -o none 2> /tmp/error-vm.txt; then
+      creada="$region/$tamano"; break
+    fi
+    echo "  falló:"; mostrar_error
+    az group delete -n "$GRUPO" --yes -o none 2>/dev/null || true
+    # Si no es un problema de capacidad o de región, probar otras regiones no ayuda
+    if ! grep -qE 'SkuNotAvailable|AllocationFailed|ZonalAllocationFailed|OverconstrainedAllocationRequest|RequestDisallowedByPolicy|QuotaExceeded|NotAvailableForSubscription' /tmp/error-vm.txt; then
+      echo; echo "Error no relacionado con la región; se detiene. Copia el mensaje de arriba (completo en /tmp/error-vm.txt)."
+      exit 1
+    fi
   done
-  [ -n "$creada" ] || { echo "No se pudo crear la máquina en ninguna región o tamaño permitido."; cat /tmp/error-vm.txt; exit 1; }
+  [ -n "$creada" ] || { echo "No se pudo crear la máquina en ninguna región permitida."; exit 1; }
   echo "  creada en $creada"
   paso "Abriendo los puertos 80 y 443"
   az vm open-port -g "$GRUPO" -n "$VM" --port 80,443 --priority 900 -o none
