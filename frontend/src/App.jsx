@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, guardarSesion, leerSesion } from './api'
 import { Aviso, useDatos } from './componentes/Comunes'
 import Login from './pantallas/Login'
-import { MisDonaciones, Publicar } from './pantallas/Donante'
+import { MisDonaciones, Publicar, Solicitudes } from './pantallas/Donante'
 import { Buscar, MisReservas } from './pantallas/Receptor'
 import Entregas from './pantallas/Entregas'
 import Notificaciones from './pantallas/Notificaciones'
@@ -13,6 +13,7 @@ import Trazabilidad from './pantallas/Trazabilidad'
 
 const PESTANAS = {
   DONANTE: [
+    ['solicitudes', 'Solicitudes', '🙋'],
     ['publicar', 'Publicar', '➕'],
     ['donaciones', 'Mis donaciones', '📦'],
     ['entregas', 'Entregas', '🤝'],
@@ -20,7 +21,7 @@ const PESTANAS = {
   ],
   RECEPTOR: [
     ['buscar', 'Buscar', '🗺️'],
-    ['necesidades', 'Necesidades', '📝'],
+    ['necesidades', 'Pedir alimentos', '🙋'],
     ['reservas', 'Mis reservas', '📋'],
     ['entregas', 'Entregas', '🤝'],
     ['avisos', 'Avisos', '🔔'],
@@ -40,6 +41,7 @@ const pestanaDeHash = () => window.location.hash.replace('#', '')
 export default function App() {
   const [sesion, setSesion] = useState(() => leerSesion())
   const [pestana, setPestana] = useState(pestanaDeHash)
+  const [oferta, setOferta] = useState(null) // D-11: solicitud a la que responde el donante al publicar
 
   function ir(id) {
     window.location.hash = id
@@ -126,7 +128,13 @@ export default function App() {
       )}
 
       <main className="contenido">
-        {actual === 'publicar' && <Publicar onPublicada={() => ir('donaciones')} />}
+        {actual === 'solicitudes' && (
+          <Solicitudes onOfrecer={(n) => { setOferta(n); ir('publicar') }} />
+        )}
+        {actual === 'publicar' && (
+          <Publicar oferta={oferta} onQuitarOferta={() => setOferta(null)}
+            onPublicada={() => { setOferta(null); ir('donaciones') }} />
+        )}
         {actual === 'donaciones' && <MisDonaciones />}
         {actual === 'buscar' && <Buscar onReservada={() => ir('reservas')} />}
         {actual === 'reservas' && <MisReservas />}

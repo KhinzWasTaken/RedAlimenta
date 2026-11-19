@@ -325,6 +325,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/necesidades/abiertas:
+    get:
+      tags:
+      - necesidades
+      summary: Solicitudes
+      description: 'D-11: solicitudes de alimentos (necesidades abiertas) para que
+        los donantes ofrezcan donaciones.'
+      operationId: solicitudes_api_necesidades_abiertas_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: lat
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 90
+            minimum: -90
+          - type: 'null'
+          title: Lat
+      - name: lon
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 180
+            minimum: -180
+          - type: 'null'
+          title: Lon
+      - name: radio_km
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 200
+            exclusiveMinimum: 0
+          - type: 'null'
+          title: Radio Km
+      - name: id_categoria
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Categoria
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/necesidades/mias:
     get:
       tags:
@@ -572,6 +633,12 @@ components:
           title: Condiciones Recogida
         ubicacion:
           $ref: '#/components/schemas/Ubicacion'
+        id_necesidad:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Necesidad
+          description: Necesidad abierta a la que responde (D-11)
       type: object
       required:
       - nombre_alimento

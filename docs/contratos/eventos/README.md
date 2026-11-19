@@ -24,7 +24,7 @@ Todos los consumen auditoría y analytics; la columna "Notifica a" dice quién r
 | USUARIO_DESACTIVADO | identity | usuario · ACTIVA → DESACTIVADA | — | — |
 | VERIFICACION_SOLICITADA | identity | verificacion · RECHAZADA → PENDIENTE | id_usuario | — |
 | USUARIO_VERIFICADO | identity | verificacion · PENDIENTE → APROBADA/RECHAZADA | id_usuario, observaciones | el usuario |
-| DONACION_CREADA | catalog-geo | donacion · ∅ → DISPONIBLE | id_donante, nombre_alimento, id_categoria, ciudad, departamento, cantidad, unidad_medida | donante |
+| DONACION_CREADA | catalog-geo | donacion · ∅ → DISPONIBLE | id_donante, nombre_alimento, id_categoria, ciudad, departamento, cantidad, unidad_medida; si responde a una solicitud (D-11): id_necesidad, id_receptor, necesidad | donante; y el receptor de la solicitud |
 | DONACION_ACTUALIZADA | catalog-geo | donacion · sin cambio de estado | id_donante, nombre_alimento, campos | — |
 | DONACION_RESERVADA | catalog-geo | donacion · DISPONIBLE → RESERVADA | id_donante, nombre_alimento, id_receptor, id_reserva, fecha_expiracion | donante |
 | DONACION_LIBERADA | catalog-geo | donacion · RESERVADA → DISPONIBLE | id_donante, nombre_alimento, motivo | donante |

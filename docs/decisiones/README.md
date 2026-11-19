@@ -31,3 +31,18 @@ aplicación (no microservicios) con módulos separados y SQLite.
 | D-08 | Puntaje calculado en SQL con ST_Distance; pesos por variables de entorno (`catalogo/config.py`). |
 | D-09 | `PLAZO_RESERVA_HORAS` (2) y `AVISO_POR_VENCER_HORAS` (24) en `cumplimiento/config.py`. |
 | D-10 | Sin cambios en `usuario`. |
+
+## D-11 · Solicitudes de alimentos (agregada el 19 de noviembre de 2026)
+
+**Problema:** las necesidades solo las veía su receptor; un donante no tenía forma de saber qué se pedía ni de
+responder a una petición concreta.
+
+**Decisión:** cada necesidad ABIERTA y vigente es una **solicitud** visible para los donantes
+(`GET /api/necesidades/abiertas`, sin el receptor ni su dirección escrita). Un donante puede publicar una donación
+**para** una solicitud (`donacion.id_necesidad`). Mientras esa necesidad siga ABIERTA, la donación queda apartada:
+solo la ve en la búsqueda y solo la reserva su receptor (fulfillment lo comprueba antes de insertar y catalog lo
+valida en la transición, D-01). Si el receptor cierra o cancela la necesidad, la donación queda disponible para
+todos. El receptor recibe un aviso al publicarse la oferta.
+
+**Compatibilidad con D-05:** la reserva sigue cubriendo la donación completa y no se descuenta cantidad de la
+necesidad; el receptor la cierra cuando queda cubierta.

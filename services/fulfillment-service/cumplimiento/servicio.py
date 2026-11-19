@@ -59,6 +59,8 @@ def reservar(db: Session, lote: Lote, cat: ClienteCatalogo, actor: Actor, id_don
     d = cat.donacion(id_donacion)  # 404 si no existe; 503 si catalog no responde
     if d["estado_donacion"] != "DISPONIBLE":
         raise Conflicto(f"La donación está {d['estado_donacion']}")
+    if d.get("id_receptor_exclusivo") not in (None, actor.id_usuario):  # D-11 (catalog también lo valida)
+        raise Conflicto("Esta donación fue ofrecida para la necesidad de otro receptor")
     r = repo.reservar(db, id_donacion, actor.id_usuario)  # D-02: gana quien inserta primero (409 al resto)
     db.commit()
     lote.agregar("RESERVA_CREADA", "reserva", r.id_reserva, None, "PENDIENTE", actor.id_usuario,

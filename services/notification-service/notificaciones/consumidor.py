@@ -30,6 +30,10 @@ def destinatarios(e: Evento) -> list[tuple[int, str]]:
                 return [(d["id_usuario"], "Tu cuenta fue verificada: ya puedes operar en RedAlimenta.")]
             return [(d["id_usuario"], f"Tu verificación fue rechazada. {d.get('observaciones') or ''}".strip())]
         case "DONACION_CREADA":
+            if receptor:  # D-11: ofrecida para una solicitud del receptor
+                return [(donante, f"Ofreciste {alimento} para la solicitud «{d.get('necesidad', '')}»."),
+                        (receptor, f"Un donante ofreció {alimento} para tu solicitud «{d.get('necesidad', '')}». "
+                                   "Resérvala en Buscar: está apartada para ti.")]
             return [(donante, f"Publicaste la donación {alimento}.")]
         case "DONACION_RESERVADA":
             return [(donante, f"{alimento} fue reservada. Confírmala antes de {_hora(d.get('fecha_expiracion'))}.")]

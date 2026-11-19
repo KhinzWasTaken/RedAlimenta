@@ -301,6 +301,12 @@ components:
           title: Condiciones Recogida
         ubicacion:
           $ref: '#/components/schemas/Ubicacion'
+        id_necesidad:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Id Necesidad
+          description: Necesidad abierta a la que responde (D-11)
       type: object
       required:
       - nombre_alimento

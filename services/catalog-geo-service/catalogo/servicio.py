@@ -27,6 +27,8 @@ def donacion_api(d: dict) -> dict:
         "condiciones_recogida": d.get("condiciones_recogida"), "estado_donacion": d.get("estado_donacion", "DISPONIBLE"),
         "ubicacion": {"lat": d["lat"], "lon": d["lon"], "direccion_referencia": d["direccion_referencia"],
                       "ciudad": d["ciudad"], "departamento": d["departamento"]},
+        "id_necesidad": d.get("id_necesidad"), "necesidad": d.get("necesidad"),
+        "id_receptor_exclusivo": d.get("id_receptor_exclusivo"),
     }
 
 
@@ -36,9 +38,22 @@ def necesidad_api(n: dict) -> dict:
         "categoria": n["categoria"], "descripcion": n["descripcion"],
         "cantidad_requerida": float(n["cantidad_requerida"]), "unidad_medida": n["unidad_medida"],
         "nivel_urgencia": n["nivel_urgencia"], "fecha_limite": _iso(n["fecha_limite"]),
-        "estado_necesidad": n["estado_necesidad"],
+        "estado_necesidad": n["estado_necesidad"], "ofertas": int(n.get("ofertas") or 0),
         "ubicacion": {"lat": n["lat"], "lon": n["lon"], "direccion_referencia": n["direccion_referencia"],
                       "ciudad": n["ciudad"], "departamento": n["departamento"]},
+    }
+
+
+def solicitud_api(n: dict) -> dict:
+    """D-11: lo que un donante ve de una necesidad abierta (sin receptor ni dirección escrita)."""
+    distancia = n.get("distancia_m")
+    return {
+        "id_necesidad": n["id_necesidad"], "id_categoria": n["id_categoria"], "categoria": n["categoria"],
+        "descripcion": n["descripcion"], "cantidad_requerida": float(n["cantidad_requerida"]),
+        "unidad_medida": n["unidad_medida"], "nivel_urgencia": n["nivel_urgencia"],
+        "fecha_limite": _iso(n["fecha_limite"]), "ofertas": int(n["ofertas"]),
+        "distancia_km": None if distancia is None else round(float(distancia) / 1000, 3),
+        "ubicacion": {"lat": n["lat"], "lon": n["lon"], "ciudad": n["ciudad"], "departamento": n["departamento"]},
     }
 
 
@@ -60,10 +75,14 @@ def una_necesidad(db: Session, id_necesidad: int) -> dict:
 
 def crear_donacion(db: Session, lote: Lote, id_donante: int, datos: dict) -> int:
     d = repo.crear_donacion(db, id_donante, **datos)
+    para = {}
+    if d.id_necesidad is not None:  # D-11: el receptor que la pidió recibe el aviso
+        n = repo.detalle_necesidades(db, ids=[d.id_necesidad])[0]
+        para = {"id_necesidad": d.id_necesidad, "id_receptor": n["id_receptor"], "necesidad": n["descripcion"]}
     lote.agregar("DONACION_CREADA", "donacion", d.id_donacion, None, "DISPONIBLE", id_donante,
                  id_donante=id_donante, nombre_alimento=d.nombre_alimento, id_categoria=d.id_categoria,
                  ciudad=datos["ciudad"], departamento=datos["departamento"], cantidad=float(d.cantidad),
-                 unidad_medida=d.unidad_medida)
+                 unidad_medida=d.unidad_medida, **para)
     return d.id_donacion
 
 
@@ -76,7 +95,7 @@ def actualizar_donacion(db: Session, lote: Lote, id_donacion: int, id_donante: i
 def transicionar(db: Session, lote: Lote, id_donacion: int, nuevo: str, id_actor: int | None,
                  datos: dict | None = None) -> tuple[str, dict]:
     """D-01: valida y aplica la transición, y anuncia el cambio. Devuelve (estado anterior, donación)."""
-    anterior, d = repo.transicionar_donacion(db, id_donacion, nuevo)
+    anterior, d = repo.transicionar_donacion(db, id_donacion, nuevo, (datos or {}).get("id_receptor"))
     lote.agregar(EVENTO_POR_ESTADO[nuevo], "donacion", id_donacion, anterior, nuevo, id_actor,
                  id_donante=d.id_donante, nombre_alimento=d.nombre_alimento, **(datos or {}))
     return anterior, una_donacion(db, id_donacion)
@@ -108,7 +127,7 @@ def buscar(db: Session, id_receptor: int, **filtros) -> dict:
         item = donacion_api(r)
         item.update({
             "distancia_m": round(float(r["distancia_m"]), 1), "distancia_km": round(float(r["distancia_m"]) / 1000, 3),
-            "nivel_urgencia": r["nivel_urgencia"],
+            "nivel_urgencia": r["nivel_urgencia"], "para_mi": bool(r["para_mi"]),
             "prioridad": {"puntaje": float(r["puntaje"]), "urgencia": float(r["urgencia"]),
                           "cercania": round(float(r["cercania"]), 4), "vencimiento": round(float(r["vencimiento"]), 4)},
         })

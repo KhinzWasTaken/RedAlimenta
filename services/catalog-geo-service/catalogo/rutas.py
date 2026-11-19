@@ -39,6 +39,7 @@ class NuevaDonacion(BaseModel):
     descripcion: str | None = None
     condiciones_recogida: str | None = None
     ubicacion: Ubicacion
+    id_necesidad: int | None = Field(default=None, description="Necesidad abierta a la que responde (D-11)")
 
 
 class CambiosDonacion(BaseModel):
@@ -170,6 +171,15 @@ def cancelar(id_donacion: int, actor: Actor = Depends(requiere_verificado("DONAN
 
 
 # --- Necesidades (S5-07) -------------------------------------------------------
+
+@rutas.get("/necesidades/abiertas", tags=["necesidades"])
+def solicitudes(lat: float | None = Query(None, ge=-90, le=90), lon: float | None = Query(None, ge=-180, le=180),
+                radio_km: float | None = Query(None, gt=0, le=200), id_categoria: int | None = None,
+                _: Actor = Depends(requiere_rol("DONANTE", "ADMINISTRADOR")), db: Session = Depends(obtener_db)):
+    """D-11: solicitudes de alimentos (necesidades abiertas) para que los donantes ofrezcan donaciones."""
+    return [servicio.solicitud_api(n) for n in repo.solicitudes_abiertas(
+        db, lat=lat, lon=lon, radio_m=radio_km * 1000 if radio_km else None, id_categoria=id_categoria)]
+
 
 @rutas.get("/necesidades/mias", tags=["necesidades"])
 def mis_necesidades(actor: Actor = Depends(requiere_rol("RECEPTOR")), db: Session = Depends(obtener_db)):

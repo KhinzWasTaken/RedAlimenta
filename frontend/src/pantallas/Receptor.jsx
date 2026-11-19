@@ -82,10 +82,11 @@ export function Buscar({ onReservada }) {
     etiqueta: `${d.nombre_alimento} · ${d.distancia_km.toFixed(1)} km`,
     lat: d.ubicacion.lat,
     lon: d.ubicacion.lon,
-    color: colorPuntaje(d.prioridad.puntaje),
+    color: d.para_mi ? '#7b3fbf' : colorPuntaje(d.prioridad.puntaje),
     popup: (
       <div className="popup">
         <b>{d.nombre_alimento}</b>
+        {d.para_mi && ' · 🎁 para ti'}
         <br />
         {d.cantidad} {d.unidad_medida} · {d.distancia_km.toFixed(1)} km
         <br />
@@ -170,6 +171,7 @@ export function Buscar({ onReservada }) {
                 <h3>{d.nombre_alimento}</h3>
                 <span className="distancia">{d.distancia_km.toFixed(1)} km</span>
               </div>
+              {d.para_mi && <p className="pequeno"><b>🎁 Ofrecida para tu solicitud · apartada para ti</b></p>}
               <p>
                 {d.cantidad} {d.unidad_medida} · {d.categoria} · {d.donante}
               </p>

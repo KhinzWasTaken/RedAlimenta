@@ -6,7 +6,8 @@ import Mapa, { CIUDADES } from '../componentes/Mapa'
 const VACIA = { descripcion: '', id_categoria: '', cantidad_requerida: '', unidad_medida: 'kg', nivel_urgencia: 'MEDIA',
   ciudad: 'Bogotá', direccion_referencia: '' }
 
-// Receptor: registrar, ver y cerrar sus necesidades (RF3). Alimentan la búsqueda y la prioridad (D-05, D-07).
+// Receptor: pedir alimentos (RF3, D-11). Cada necesidad abierta la ven los donantes como una solicitud y pueden
+// ofrecer una donación apartada para este receptor; también alimenta la búsqueda y la prioridad (D-05, D-07).
 export default function Necesidades() {
   const necesidades = useDatos('/necesidades/mias')
   const categorias = useDatos('/categorias')
@@ -27,7 +28,7 @@ export default function Necesidades() {
         ubicacion: { ...punto, ciudad: f.ciudad, departamento: CIUDADES[f.ciudad].departamento,
           direccion_referencia: f.direccion_referencia || null },
       },
-    }), 'Necesidad registrada.')
+    }), 'Solicitud publicada: los donantes ya pueden verla.')
     if (r) {
       setF(VACIA)
       setPunto(null)
@@ -36,7 +37,11 @@ export default function Necesidades() {
 
   return (
     <section>
-      <h2>Mis necesidades</h2>
+      <h2>Mis solicitudes de alimentos</h2>
+      <p className="tenue">
+        Los donantes ven tus solicitudes abiertas y pueden ofrecerte una donación. Cuando lo hagan recibirás un
+        aviso y la donación aparecerá primero en <b>Buscar</b>, apartada para ti.
+      </p>
       <Aviso mensaje={mensaje?.texto} tipo={mensaje?.tipo} onCerrar={() => setMensaje(null)} />
       <Aviso mensaje={necesidades.error} />
       <div className="rejilla">
@@ -49,6 +54,10 @@ export default function Necesidades() {
             <p>{n.cantidad_requerida} {n.unidad_medida} · {n.categoria} · urgencia <b>{n.nivel_urgencia}</b></p>
             <p className="pequeno tenue">{n.ubicacion.direccion_referencia} · {n.ubicacion.ciudad}
               {n.fecha_limite && ` · hasta ${fecha(n.fecha_limite)}`}</p>
+            {n.ofertas > 0 && (
+              <p className="pequeno"><b>🎁 {n.ofertas} {n.ofertas === 1 ? 'donación ofrecida' : 'donaciones ofrecidas'}</b>
+                {n.estado_necesidad === 'ABIERTA' && ' · búscala en Buscar'}</p>
+            )}
             {n.estado_necesidad === 'ABIERTA' && (
               <div className="fila-botones">
                 <button className="secundario" disabled={ocupado}
@@ -63,7 +72,7 @@ export default function Necesidades() {
         ))}
       </div>
 
-      <h2>Registrar necesidad</h2>
+      <h2>Pedir alimentos</h2>
       <label>
         Ciudad
         <select value={f.ciudad} onChange={(e) => { setF({ ...f, ciudad: e.target.value }); setPunto(null) }}>
@@ -102,7 +111,7 @@ export default function Necesidades() {
         <label>Dirección de referencia
           <input value={f.direccion_referencia} onChange={cambiar('direccion_referencia')} />
         </label>
-        <button type="submit" disabled={ocupado}>Registrar necesidad</button>
+        <button type="submit" disabled={ocupado}>Publicar solicitud</button>
       </form>
     </section>
   )

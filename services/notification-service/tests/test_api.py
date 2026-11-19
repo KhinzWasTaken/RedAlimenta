@@ -25,6 +25,9 @@ def test_cada_evento_llega_al_destinatario_correcto():
     assert [u for u, _ in destinatarios(evento("ENTREGA_CONFIRMADA", por="donante"))] == [5]
     assert [u for u, _ in destinatarios(evento("ENTREGA_CONFIRMADA", por="receptor"))] == [4]
     assert destinatarios(evento("EVENTO_DESCONOCIDO")) == []
+    # D-11: una donación ofrecida para una solicitud avisa también al receptor que la pidió
+    ofrecida = destinatarios(evento("DONACION_CREADA", necesidad="Arroz para 120 almuerzos"))
+    assert [u for u, _ in ofrecida] == [4, 5] and "apartada para ti" in ofrecida[1][1]
     verificado = Evento(tipo="USUARIO_VERIFICADO", entidad="verificacion", id_entidad=3, estado_nuevo="APROBADA",
                         datos={"id_usuario": 3})
     assert destinatarios(verificado)[0][0] == 3

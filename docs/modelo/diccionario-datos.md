@@ -191,12 +191,14 @@ Alimentos ofrecidos por los donantes. Solo este servicio cambia estado_donacion 
 | `fecha_publicacion` | timestamp with time zone | no | now() | Cuándo se publicó. |
 | `condiciones_recogida` | text | sí |  | Horario, cadena de frío, acceso... |
 | `estado_donacion` | estado_donacion | no | 'DISPONIBLE'::estado_donacion | DISPONIBLE, RESERVADA, ENTREGADA, CANCELADA o VENCIDA. |
+| `id_necesidad` | bigint | sí |  | Necesidad a la que responde (D-11); NULL si es una donación abierta a todos. |
 
 Restricciones:
 
 - **CHECK** `ck_donacion_cantidad_positiva`: `CHECK ((cantidad > (0)::numeric))`
 - **CHECK** `ck_donacion_vence_despues_de_publicar`: `CHECK (((fecha_vencimiento IS NULL) OR (fecha_vencimiento > fecha_publicacion)))`
 - **FK** `fk_donacion_id_categoria_categoria_alimento`: `FOREIGN KEY (id_categoria) REFERENCES categoria_alimento(id_categoria)`
+- **FK** `fk_donacion_id_necesidad_necesidad_alimentaria`: `FOREIGN KEY (id_necesidad) REFERENCES necesidad_alimentaria(id_necesidad)`
 - **FK** `fk_donacion_id_ubicacion_ubicacion_geografica`: `FOREIGN KEY (id_ubicacion) REFERENCES ubicacion_geografica(id_ubicacion)`
 - **PK** `pk_donacion`: `PRIMARY KEY (id_donacion)`
 
@@ -205,6 +207,7 @@ Restricciones:
 - `ix_donacion_estado_donacion`: `btree (estado_donacion)`
 - `ix_donacion_id_categoria`: `btree (id_categoria)`
 - `ix_donacion_id_donante`: `btree (id_donante)`
+- `ix_donacion_id_necesidad`: `btree (id_necesidad)`
 - `ix_donacion_id_ubicacion`: `btree (id_ubicacion)`
 
 Triggers:

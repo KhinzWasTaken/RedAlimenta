@@ -51,7 +51,7 @@ sin perder datos. Después: **http://localhost:8080**.
 El administrador tiene las pestañas **Tablero** (indicadores del RF9 sobre el almacén, filtros, mapa de
 cobertura y exportación CSV; API `/api/indicadores/*` y `/api/reportes/*.csv`) y **Trazabilidad** (historia
 completa de una donación, reserva, entrega o usuario, RF10). `python scripts/revisar_seguridad.py --bases`
-revisa controles de seguridad y `python scripts/trazabilidad.py --ejecutar` corre las 59 pruebas citadas en
+revisa controles de seguridad y `python scripts/trazabilidad.py --ejecutar` corre las 61 pruebas citadas en
 la matriz de requerimientos.
 
 ### Almacén de datos (Sprint 7)
